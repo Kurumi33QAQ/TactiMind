@@ -255,6 +255,25 @@
                 {{ mark.label }}
               </span>
             </div>
+            <div class="timeline-signals" aria-label="比赛事件和 Agent 分析时间点">
+              <button
+                v-for="dot in timelineSignalDots"
+                :key="dot.minute"
+                type="button"
+                :class="[
+                  'timeline-signal',
+                  {
+                    'has-analysis': dot.analysisCount > 0,
+                    'is-current': dot.minute === state.currentMinute
+                  }
+                ]"
+                :style="{ left: `${timelineMarkPosition(dot.minute)}%` }"
+                :title="`第 ${dot.minute} 分钟：${dot.eventCount} 个事件，${dot.analysisCount} 条分析`"
+                @click="jumpToTimelineMinute(dot.minute)"
+              >
+                <span>{{ dot.minute }}'</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -266,13 +285,23 @@
       </section>
 
       <section class="soft-card analysis-panel">
-        <div class="section-title">Agent 战术分析</div>
+        <div class="section-head compact-head">
+          <div class="section-title">Agent 战术分析</div>
+          <span class="focus-counter">
+            当前第 {{ state.currentMinute }} 分钟：{{ currentMinuteEvents.length }} 个事件 / {{ currentMinuteAnalyses.length }} 条分析
+          </span>
+        </div>
         <div v-if="analyses.length === 0" class="empty">等待 Agent 基于比赛数据生成战术分析...</div>
         <div v-else class="analysis-list">
           <article
             v-for="analysis in orderedAnalyses"
             :key="`${analysis.minute}-${analysis.conclusion}`"
-            :class="['analysis-card', analysisLevelClass(analysis), teamSideClass(analysisTeamName(analysis))]"
+            :class="[
+              'analysis-card',
+              analysisLevelClass(analysis),
+              teamSideClass(analysisTeamName(analysis)),
+              { 'is-current-minute': analysis.minute === state.currentMinute }
+            ]"
           >
             <div class="analysis-meta">
               <span :class="['analysis-badge', analysisLevelClass(analysis)]">{{ analysisLevelName(analysis) }}</span>
@@ -360,7 +389,7 @@
               <article
                 v-for="event in orderedEvents"
                 :key="`${event.minute}-${event.type}-${event.description}`"
-                :class="['event-card', teamSideClass(event.team)]"
+                :class="['event-card', teamSideClass(event.team), { 'is-current-minute': event.minute === state.currentMinute }]"
               >
                 <div class="event-minute">{{ event.minute }}'</div>
                 <div>
@@ -511,6 +540,8 @@ const awayStats = computed(() => state.teams[teamNames.value[1]] ?? emptyStats)
 const orderedEvents = computed(() => [...events.value].reverse())
 const orderedAnalyses = computed(() => [...analyses.value].reverse())
 const backButtonText = computed(() => (previousListView.value === 'history' ? '返回历史任务' : '返回比赛库'))
+const currentMinuteEvents = computed(() => events.value.filter((event) => event.minute === state.currentMinute))
+const currentMinuteAnalyses = computed(() => analyses.value.filter((analysis) => analysis.minute === state.currentMinute))
 const timelineMarks = computed(() => {
   const matchEnd = finalMinute.value
   const marks = [
@@ -538,6 +569,28 @@ const timelineMarks = computed(() => {
       mark.minute <= matchEnd
       && marks.findIndex((item) => item.minute === mark.minute) === index
   )
+})
+
+const timelineSignalDots = computed(() => {
+  const buckets = new Map<number, { minute: number; eventCount: number; analysisCount: number }>()
+  const ensureBucket = (minute: number) => {
+    if (!buckets.has(minute)) {
+      buckets.set(minute, { minute, eventCount: 0, analysisCount: 0 })
+    }
+    return buckets.get(minute)!
+  }
+
+  events.value.forEach((event) => {
+    if (event.minute < 0 || event.minute > finalMinute.value) return
+    ensureBucket(event.minute).eventCount += 1
+  })
+
+  analyses.value.forEach((analysis) => {
+    if (analysis.minute < 0 || analysis.minute > finalMinute.value) return
+    ensureBucket(analysis.minute).analysisCount += 1
+  })
+
+  return [...buckets.values()].sort((first, second) => first.minute - second.minute)
 })
 
 watch(
@@ -604,7 +657,7 @@ async function jumpToMinute() {
     const status = await legacyMatchApi.seek(seekMinute.value)
     const allEvents = await legacyMatchApi.getEvents()
     events.value = allEvents.filter((event) => event.minute <= status.currentMinute)
-    analyses.value = []
+    analyses.value = analyses.value.filter((analysis) => analysis.minute <= status.currentMinute)
     report.value = null
     timelineEdited.value = false
     seekMinute.value = status.currentMinute
@@ -620,6 +673,12 @@ async function jumpToMinute() {
 
 function markTimelineEdited() {
   timelineEdited.value = true
+}
+
+async function jumpToTimelineMinute(minute: number) {
+  seekMinute.value = minute
+  timelineEdited.value = true
+  await jumpToMinute()
 }
 
 function timelineMarkPosition(minute: number) {
@@ -1534,6 +1593,54 @@ function formatTime(value: string) {
   text-align: right;
 }
 
+.timeline-signals {
+  position: relative;
+  height: 18px;
+}
+
+.timeline-signal {
+  position: absolute;
+  top: 1px;
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #7db8ff;
+  box-shadow: 0 0 0 4px rgba(125, 184, 255, 0.13);
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.timeline-signal.has-analysis {
+  background: #f2c66d;
+  box-shadow: 0 0 0 4px rgba(242, 198, 109, 0.16);
+}
+
+.timeline-signal.is-current,
+.timeline-signal:hover {
+  transform: translateX(-50%) scale(1.35);
+  box-shadow: 0 0 18px rgba(242, 198, 109, 0.38);
+}
+
+.timeline-signal span {
+  position: absolute;
+  left: 50%;
+  top: 11px;
+  color: #9fb0c7;
+  font-size: 10px;
+  opacity: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.timeline-signal:hover span,
+.timeline-signal.is-current span {
+  opacity: 1;
+}
+
 .match-status {
   display: flex;
   gap: 12px;
@@ -1612,6 +1719,25 @@ function formatTime(value: string) {
 .analysis-card.team-neutral,
 .event-card.team-neutral {
   border-left: 4px solid #94a3b8;
+}
+
+.analysis-card.is-current-minute,
+.event-card.is-current-minute {
+  border-color: rgba(242, 198, 109, 0.62);
+  box-shadow:
+    inset 0 0 0 1px rgba(242, 198, 109, 0.16),
+    0 0 20px rgba(242, 198, 109, 0.1);
+}
+
+.compact-head {
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.focus-counter {
+  color: #9fb0c7;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .score {
