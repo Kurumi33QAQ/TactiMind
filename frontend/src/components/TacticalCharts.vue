@@ -83,8 +83,8 @@ function renderShotsChart() {
     xAxis: axis('category', names),
     yAxis: axis('value'),
     series: [
-      { name: '射门', type: 'bar', data: shots, itemStyle: { color: '#22c55e' } },
-      { name: '射正', type: 'bar', data: shotsOnTarget, itemStyle: { color: '#60a5fa' } }
+      { name: '射门', type: 'bar', data: shots, itemStyle: { color: '#f2c66d' } },
+      { name: '射正', type: 'bar', data: shotsOnTarget, itemStyle: { color: '#7db8ff' } }
     ]
   })
 }
@@ -123,7 +123,7 @@ function renderEventChart() {
     .map(([type, count]) => ({ name: eventTypeName(type), value: count }))
     .sort((first, second) => second.value - first.value)
 
-  const colors = ['#d7f171', '#2fbf71', '#6fb7ff', '#f6c453', '#f08a5d', '#b48cff', '#7ad7d0']
+  const colors = ['#f2c66d', '#7db8ff', '#8fd3c8', '#f08a5d', '#b48cff', '#f7a6b6', '#8cc8ff']
 
   eventChart?.setOption({
     backgroundColor: 'transparent',
@@ -137,7 +137,7 @@ function renderEventChart() {
       itemWidth: 10,
       itemHeight: 10,
       itemGap: 10,
-      textStyle: { color: '#c8d6cc', fontSize: 12 }
+      textStyle: { color: '#d4deee', fontSize: 12 }
     },
     series: [
       {
@@ -147,7 +147,7 @@ function renderEventChart() {
         center: ['32%', '54%'],
         avoidLabelOverlap: true,
         label: {
-          color: '#edf4ef',
+          color: '#eef3fb',
           formatter: '{c}',
           fontWeight: 700
         },
@@ -228,7 +228,7 @@ function observeChartSize() {
   height: 260px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 12px;
-  background: rgba(15, 28, 49, 0.66);
+  background: rgba(11, 18, 31, 0.72);
 }
 
 .chart-panel-embedded .chart-box {

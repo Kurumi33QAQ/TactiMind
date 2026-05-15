@@ -1,12 +1,12 @@
 :root {
-  color: #edf4ef;
-  background: #07110e;
+  color: #eef3fb;
+  background: #08111d;
   font-family: Inter, "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --el-color-primary: #2fbf71;
-  --el-color-success: #2fbf71;
-  --el-color-warning: #f6c453;
+  --el-color-primary: #7db8ff;
+  --el-color-success: #69c394;
+  --el-color-warning: #f2c66d;
   --el-border-radius-base: 8px;
 }
 
@@ -18,18 +18,24 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  position: relative;
+  isolation: isolate;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-    repeating-linear-gradient(
-      90deg,
-      rgba(38, 96, 66, 0.16) 0,
-      rgba(38, 96, 66, 0.16) 120px,
-      rgba(15, 39, 28, 0.12) 120px,
-      rgba(15, 39, 28, 0.12) 240px
-    ),
-    linear-gradient(135deg, #07110e 0%, #0b1714 42%, #10171b 100%);
-  background-size: 36px 36px, 36px 36px, auto, auto;
+    linear-gradient(180deg, rgba(6, 10, 18, 0.7) 0%, rgba(6, 10, 18, 0.92) 72%, rgba(5, 8, 14, 0.97) 100%),
+    url('../assets/backgrounds/stadium-night-dashboard.png') center / cover fixed no-repeat;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    radial-gradient(circle at top center, rgba(242, 198, 109, 0.16), transparent 42%);
+  background-size: 42px 42px, 42px 42px, auto;
 }
 
 button,
@@ -44,15 +50,16 @@ input {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #d7f171, #2fbf71);
-  color: #0b1714;
+  background: linear-gradient(135deg, #f2c66d, #7db8ff);
+  color: #101827;
   font-weight: 800;
-  box-shadow: 0 0 18px rgba(47, 191, 113, 0.22);
+  box-shadow: 0 0 18px rgba(125, 184, 255, 0.2);
 }
 
 .soft-card {
-  border: 1px solid rgba(218, 236, 224, 0.12);
+  border: 1px solid rgba(202, 214, 236, 0.14);
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(12, 22, 18, 0.92), rgba(8, 16, 14, 0.86));
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+  background: linear-gradient(180deg, rgba(12, 18, 31, 0.88), rgba(8, 13, 24, 0.8));
+  box-shadow: 0 18px 36px rgba(2, 6, 23, 0.34);
+  backdrop-filter: blur(14px);
 }

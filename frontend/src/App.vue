@@ -901,7 +901,7 @@ function formatTime(value: string) {
 
 .topbar {
   margin-bottom: 18px;
-  border-bottom: 1px solid rgba(215, 241, 113, 0.12);
+  border-bottom: 1px solid rgba(242, 198, 109, 0.14);
   padding-bottom: 14px;
 }
 
@@ -956,7 +956,7 @@ function formatTime(value: string) {
 }
 
 .detail-versus {
-  color: #4ade80;
+  color: #f2c66d;
   font-size: 24px;
   font-weight: 900;
 }
@@ -1035,8 +1035,8 @@ function formatTime(value: string) {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(215, 241, 113, 0.08), transparent 34%),
-    linear-gradient(180deg, transparent, rgba(47, 191, 113, 0.04));
+    linear-gradient(90deg, rgba(242, 198, 109, 0.1), transparent 34%),
+    linear-gradient(180deg, transparent, rgba(125, 184, 255, 0.05));
 }
 
 .search-head,
@@ -1068,10 +1068,10 @@ function formatTime(value: string) {
 }
 
 .selected-match {
-  border: 1px solid rgba(74, 222, 128, 0.28);
+  border: 1px solid rgba(125, 184, 255, 0.26);
   border-radius: 12px;
-  background: rgba(20, 83, 45, 0.18);
-  color: #d7fbe8;
+  background: rgba(22, 33, 53, 0.58);
+  color: #e7eefb;
   padding: 12px;
   margin-bottom: 16px;
 }
@@ -1132,12 +1132,12 @@ function formatTime(value: string) {
   font-size: 26px;
   font-weight: 900;
   letter-spacing: 0;
-  color: #f3f7e8;
+  color: #f8f4ea;
 }
 
 .subtitle {
   margin-top: 4px;
-  color: #b7cdbd;
+  color: #b9c7db;
 }
 
 .connection {
@@ -1174,7 +1174,7 @@ function formatTime(value: string) {
 }
 
 .connection-dot.connected {
-  background: #d7f171;
+  background: #f2c66d;
 }
 
 .dashboard-grid {
@@ -1238,15 +1238,15 @@ function formatTime(value: string) {
 }
 
 .detail-tabs :deep(.el-tabs__item.is-active) {
-  color: #d7f171;
+  color: #f2c66d;
 }
 
 .detail-tabs :deep(.el-tabs__active-bar) {
-  background-color: #d7f171;
+  background-color: #f2c66d;
 }
 
 .detail-tabs :deep(.el-tabs__nav-wrap::after) {
-  background-color: rgba(215, 241, 113, 0.12);
+  background-color: rgba(242, 198, 109, 0.14);
 }
 
 .detail-tabs :deep(.el-tabs__item) {
@@ -1285,7 +1285,7 @@ function formatTime(value: string) {
   width: 4px;
   height: 18px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #d7f171, #2fbf71);
+  background: linear-gradient(180deg, #f2c66d, #7db8ff);
 }
 
 .actions {
@@ -1310,7 +1310,7 @@ function formatTime(value: string) {
   display: flex;
   gap: 12px;
   margin: 16px 0;
-  color: #d7f171;
+  color: #f2c66d;
   font-weight: 800;
 }
 
@@ -1325,7 +1325,7 @@ function formatTime(value: string) {
 .simulation-grid .scoreboard :deep(.team-card) {
   padding: 12px;
   background:
-    linear-gradient(180deg, rgba(20, 38, 28, 0.94), rgba(12, 24, 19, 0.88));
+    linear-gradient(180deg, rgba(21, 31, 49, 0.94), rgba(12, 18, 31, 0.88));
 }
 
 .simulation-grid .scoreboard :deep(.team-title) {
@@ -1371,7 +1371,7 @@ function formatTime(value: string) {
 
 .analysis-card.team-home,
 .event-card.team-home {
-  border-left: 4px solid #22c55e;
+  border-left: 4px solid #f2c66d;
 }
 
 .analysis-card.team-away,
@@ -1462,8 +1462,8 @@ function formatTime(value: string) {
 }
 
 .team-side-badge.team-home {
-  background: rgba(34, 197, 94, 0.14);
-  color: #bbf7d0;
+  background: rgba(242, 198, 109, 0.14);
+  color: #fde7ae;
 }
 
 .team-side-badge.team-away {
@@ -1496,7 +1496,7 @@ function formatTime(value: string) {
 }
 
 .event-minute {
-  color: #4ade80;
+  color: #f2c66d;
   font-weight: 900;
 }
 
@@ -1531,7 +1531,7 @@ function formatTime(value: string) {
 }
 
 .trace-title {
-  color: #4ade80;
+  color: #7db8ff;
   font-weight: 800;
 }
 
