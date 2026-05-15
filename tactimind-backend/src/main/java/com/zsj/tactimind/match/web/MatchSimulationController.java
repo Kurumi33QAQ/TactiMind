@@ -57,6 +57,11 @@ public class MatchSimulationController {
         return simulationService.updateSpeed(speed);
     }
 
+    @PostMapping("/simulate/seek")
+    public SimulationStatus seek(@RequestParam int minute) {
+        return simulationService.seek(minute);
+    }
+
     @GetMapping("/events")
     public List<MatchEvent> events() {
         return simulationService.events();

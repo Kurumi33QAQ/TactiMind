@@ -202,25 +202,60 @@
 
     <main v-if="currentView === 'simulation'" class="dashboard-grid simulation-grid">
       <section class="soft-card control-panel">
-        <div class="section-title">实时演练控制台</div>
+        <div class="control-panel-head">
+          <div class="section-title">实时演练控制台</div>
+          <div class="match-status">
+            第 {{ state.currentMinute }} 分钟
+            <span>{{ state.running ? '模拟中' : '已暂停' }}</span>
+            <span>{{ simulationSpeed }}x</span>
+            <span v-if="state.finished">已结束</span>
+          </div>
+        </div>
         <div class="actions">
-          <el-button type="success" @click="runAction('start')">开始演练</el-button>
-          <el-button @click="runAction('pause')">暂停</el-button>
+          <el-button :type="state.running ? 'warning' : 'success'" @click="toggleSimulation">
+            {{ state.running ? '暂停演练' : '开始演练' }}
+          </el-button>
           <el-button type="danger" plain @click="runAction('reset')">重置</el-button>
           <el-button @click="loadSnapshot">刷新状态</el-button>
           <el-button type="primary" plain @click="runAction('analyze')">立即分析</el-button>
         </div>
 
-        <div class="speed-control">
-          <span>演练倍速</span>
-          <el-segmented v-model="simulationSpeed" :options="speedOptions" @change="changeSimulationSpeed" />
-        </div>
+        <div class="playback-tools">
+          <div class="speed-control">
+            <span>演练倍速</span>
+            <el-segmented v-model="simulationSpeed" :options="speedOptions" @change="changeSimulationSpeed" />
+          </div>
 
-        <div class="match-status">
-          第 {{ state.currentMinute }} 分钟
-          <span>{{ state.running ? '模拟中' : '已暂停' }}</span>
-          <span>{{ simulationSpeed }}x</span>
-          <span v-if="state.finished">已结束</span>
+          <div class="timeline-control">
+            <div class="timeline-head">
+              <span>比赛时间轴</span>
+              <strong>目标第 {{ seekMinute }} 分钟</strong>
+            </div>
+            <el-slider
+              v-model="seekMinute"
+              :min="0"
+              :max="finalMinute"
+              :step="1"
+              :show-tooltip="false"
+              :disabled="seeking"
+              @input="markTimelineEdited"
+              @change="jumpToMinute"
+            />
+            <div class="timeline-marks">
+              <span
+                v-for="mark in timelineMarks"
+                :key="mark.minute"
+                :class="{
+                  highlight: mark.highlight,
+                  start: mark.minute === 0,
+                  end: mark.minute === finalMinute
+                }"
+                :style="{ left: `${timelineMarkPosition(mark.minute)}%` }"
+              >
+                {{ mark.label }}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div class="scoreboard">
@@ -439,6 +474,10 @@ const currentView = ref<'catalog' | 'match-detail' | 'simulation' | 'history'>('
 const previousListView = ref<'catalog' | 'history'>('catalog')
 const activeDetailTab = ref('charts')
 const simulationSpeed = ref(1)
+const seekMinute = ref(0)
+const finalMinute = ref(90)
+const timelineEdited = ref(false)
+const seeking = ref(false)
 const speedOptions = [
   { label: '0.5x', value: 0.5 },
   { label: '1x', value: 1 },
@@ -472,6 +511,34 @@ const awayStats = computed(() => state.teams[teamNames.value[1]] ?? emptyStats)
 const orderedEvents = computed(() => [...events.value].reverse())
 const orderedAnalyses = computed(() => [...analyses.value].reverse())
 const backButtonText = computed(() => (previousListView.value === 'history' ? '返回历史任务' : '返回比赛库'))
+const timelineMarks = computed(() => {
+  const matchEnd = finalMinute.value
+  const marks = [
+    { minute: 0, label: "0'", highlight: false },
+    { minute: 15, label: "15'", highlight: false },
+    { minute: 30, label: "30'", highlight: false },
+    { minute: 45, label: "半场 45'", highlight: true },
+    { minute: 60, label: "60'", highlight: false },
+    { minute: 75, label: "75'", highlight: false }
+  ]
+
+  if (matchEnd > 90) {
+    marks.push({ minute: 90, label: "常规 90'", highlight: true })
+  }
+  if (matchEnd > 105) {
+    marks.push({ minute: 105, label: "加时半场 105'", highlight: true })
+  }
+  if (matchEnd > 120) {
+    marks.push({ minute: 120, label: "加时结束 120'", highlight: matchEnd > 120 })
+  }
+  marks.push({ minute: matchEnd, label: `终场 ${matchEnd}'`, highlight: true })
+
+  return marks.filter(
+    (mark, index) =>
+      mark.minute <= matchEnd
+      && marks.findIndex((item) => item.minute === mark.minute) === index
+  )
+})
 
 watch(
   () => [homeStats.value.goals, awayStats.value.goals],
@@ -505,6 +572,7 @@ async function runAction(action: 'start' | 'pause' | 'reset' | 'analyze') {
       events.value = []
       analyses.value = []
       report.value = null
+      timelineEdited.value = false
     }
     if (action === 'analyze') {
       const result = await legacyMatchApi.analyzeNow()
@@ -516,6 +584,10 @@ async function runAction(action: 'start' | 'pause' | 'reset' | 'analyze') {
   }
 }
 
+async function toggleSimulation() {
+  await runAction(state.running ? 'pause' : 'start')
+}
+
 async function changeSimulationSpeed(value: number | string) {
   try {
     const nextSpeed = Number(value)
@@ -524,6 +596,37 @@ async function changeSimulationSpeed(value: number | string) {
   } catch (error) {
     ElMessage.error(userError(error))
   }
+}
+
+async function jumpToMinute() {
+  try {
+    seeking.value = true
+    const status = await legacyMatchApi.seek(seekMinute.value)
+    const allEvents = await legacyMatchApi.getEvents()
+    events.value = allEvents.filter((event) => event.minute <= status.currentMinute)
+    analyses.value = []
+    report.value = null
+    timelineEdited.value = false
+    seekMinute.value = status.currentMinute
+    finalMinute.value = status.finalMinute
+    await loadSnapshot()
+    ElMessage.success(`已跳转到第 ${status.currentMinute} 分钟，可继续演练。`)
+  } catch (error) {
+    ElMessage.error(userError(error))
+  } finally {
+    seeking.value = false
+  }
+}
+
+function markTimelineEdited() {
+  timelineEdited.value = true
+}
+
+function timelineMarkPosition(minute: number) {
+  if (finalMinute.value === 0) {
+    return 0
+  }
+  return Math.min(100, Math.max(0, (minute / finalMinute.value) * 100))
 }
 
 async function searchMatches() {
@@ -727,6 +830,10 @@ async function loadSnapshot() {
     analyses.value = latestAnalyses
     Object.assign(persistenceStatus, latestPersistence)
     simulationSpeed.value = latestStatus.speed
+    finalMinute.value = latestStatus.finalMinute
+    if (!timelineEdited.value) {
+      seekMinute.value = latestStatus.currentMinute
+    }
   } catch (error) {
     ElMessage.error(userError(error))
   }
@@ -782,12 +889,17 @@ function handleWsMessage(message: WsMessage) {
       finished: boolean
       eventCursor: number
       speed: number
+      finalMinute: number
     }
     state.currentMinute = status.currentMinute
     state.running = status.running
     state.finished = status.finished
     state.eventCursor = status.eventCursor
     simulationSpeed.value = status.speed
+    finalMinute.value = status.finalMinute
+    if (!timelineEdited.value) {
+      seekMinute.value = status.currentMinute
+    }
   }
   if (message.messageType === 'SIMULATION_ERROR') {
     ElMessage.error('比赛模拟异常，请查看后端日志。')
@@ -1303,6 +1415,18 @@ function formatTime(value: string) {
   padding: 16px 18px;
 }
 
+.control-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.control-panel-head .section-title {
+  margin-bottom: 0;
+}
+
 .event-panel {
   grid-row: span 3;
 }
@@ -1330,11 +1454,18 @@ function formatTime(value: string) {
   gap: 8px;
 }
 
+.playback-tools {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr);
+  align-items: end;
+  gap: 16px;
+  margin-top: 12px;
+}
+
 .speed-control {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 14px;
 }
 
 .speed-control span {
@@ -1342,12 +1473,74 @@ function formatTime(value: string) {
   font-weight: 700;
 }
 
+.timeline-control {
+  display: grid;
+  gap: 4px;
+}
+
+.timeline-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timeline-head {
+  justify-content: space-between;
+  color: #9fb0c7;
+  font-size: 14px;
+}
+
+.timeline-head strong {
+  color: #f2c66d;
+}
+
+.timeline-control :deep(.el-slider__bar) {
+  background-color: #f2c66d;
+}
+
+.timeline-control :deep(.el-slider__button) {
+  border-color: #f2c66d;
+}
+
+.timeline-marks {
+  position: relative;
+  height: 18px;
+  color: #7f8ca2;
+  font-size: 12px;
+}
+
+.timeline-marks span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.timeline-marks span.start {
+  transform: translateX(0);
+}
+
+.timeline-marks span.end {
+  transform: translateX(-100%);
+}
+
+.timeline-marks span.highlight {
+  color: #fde7ae;
+  font-weight: 700;
+}
+
+.timeline-marks span:last-child {
+  color: #d4deee;
+  text-align: right;
+}
+
 .match-status {
   display: flex;
   gap: 12px;
-  margin: 16px 0;
+  margin: 0;
   color: #f2c66d;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .scoreboard {
@@ -1733,6 +1926,15 @@ function formatTime(value: string) {
   }
 
   .topbar-match-meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .playback-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .control-panel-head {
     align-items: flex-start;
     flex-direction: column;
   }

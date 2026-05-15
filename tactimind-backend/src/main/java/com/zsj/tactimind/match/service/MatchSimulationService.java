@@ -169,7 +169,15 @@ public class MatchSimulationService {
     }
 
     public synchronized SimulationStatus status() {
-        return new SimulationStatus(running, state.isFinished(), cursor, events.size(), state.getCurrentMinute(), speed);
+        return new SimulationStatus(
+                running,
+                state.isFinished(),
+                cursor,
+                events.size(),
+                state.getCurrentMinute(),
+                speed,
+                finalMinute
+        );
     }
 
     public synchronized SimulationStatus updateSpeed(double speed) {
@@ -181,6 +189,31 @@ public class MatchSimulationService {
             cancelTask();
             scheduleClock();
         }
+        broadcaster.broadcast("SIMULATION_STATUS", status());
+        return status();
+    }
+
+    public synchronized SimulationStatus seek(int minute) {
+        if (minute < 0 || minute > finalMinute) {
+            throw new IllegalArgumentException("跳转分钟必须位于 0 到 " + finalMinute + " 之间");
+        }
+
+        running = false;
+        cancelTask();
+        resetInternal();
+        clearPersistedTimeline();
+
+        for (int nextMinute = 1; nextMinute <= minute; nextMinute++) {
+            aggregator.advanceClock(state, nextMinute);
+            while (cursor < events.size() && events.get(cursor).getMinute() == nextMinute) {
+                replayEventAtCurrentMinute(events.get(cursor));
+            }
+        }
+
+        state.setRunning(false);
+        cacheSnapshot();
+        persistMatchInfo();
+        broadcaster.broadcast("MATCH_STATE", state);
         broadcaster.broadcast("SIMULATION_STATUS", status());
         return status();
     }
@@ -228,6 +261,14 @@ public class MatchSimulationService {
         persistenceService.saveEvent(state.getMatchId(), cursor, event);
         broadcaster.broadcast("MATCH_EVENT", event);
         analyzeIfNeeded(event);
+    }
+
+    private void replayEventAtCurrentMinute(MatchEvent event) {
+        cursor++;
+        aggregator.apply(state, event, cursor);
+        rememberRecentEvent(event);
+        publishedEvents.add(event);
+        persistenceService.saveEvent(state.getMatchId(), cursor, event);
     }
 
     private void rememberRecentEvent(MatchEvent event) {

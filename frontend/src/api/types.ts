@@ -41,6 +41,7 @@ export interface SimulationStatus {
   totalEvents: number
   currentMinute: number
   speed: number
+  finalMinute: number
 }
 
 export interface MatchReport {

@@ -1,4 +1,5 @@
 import type {
+  MatchEvent,
   MatchReport,
   MatchState,
   PersistenceStatus,
@@ -20,8 +21,11 @@ export const legacyMatchApi = {
   reset: () => requestJson<SimulationStatus>('/match/simulate/reset', { method: 'POST' }),
   updateSpeed: (speed: number) =>
     requestJson<SimulationStatus>(`/match/simulate/speed?speed=${speed}`, { method: 'POST' }),
+  seek: (minute: number) =>
+    requestJson<SimulationStatus>(`/match/simulate/seek?minute=${minute}`, { method: 'POST' }),
   analyzeNow: () => requestJson<TacticalAnalysis[]>('/match/agent/analyze-now', { method: 'POST' }),
   getStatus: () => requestJson<SimulationStatus>('/match/simulate/status'),
+  getEvents: () => requestJson<MatchEvent[]>('/match/events'),
   getState: () => requestJson<MatchState>('/match/state'),
   getAnalyses: () => requestJson<TacticalAnalysis[]>('/match/analysis'),
   getReport: () => requestJson<MatchReport>('/match/report'),
