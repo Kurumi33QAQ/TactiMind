@@ -291,6 +291,23 @@
             当前第 {{ state.currentMinute }} 分钟：{{ currentMinuteEvents.length }} 个事件 / {{ currentMinuteAnalyses.length }} 条分析
           </span>
         </div>
+        <div v-if="realtimeTrendHints.length > 0" class="trend-hints">
+          <article
+            v-for="hint in realtimeTrendHints"
+            :key="hint.id"
+            :class="['trend-hint-card', `trend-${hint.level}`, teamSideClass(hint.team)]"
+          >
+            <div class="analysis-meta">
+              <span class="analysis-badge trend-badge">DataAgent 实时提示</span>
+              <span :class="['team-side-badge', teamSideClass(hint.team)]">{{ teamDisplayName(hint.team) }}</span>
+              近 10 分钟 | 置信度 {{ confidenceText(hint.confidence) }}
+            </div>
+            <div class="analysis-conclusion">{{ hint.title }}</div>
+            <ul class="evidence-list compact-evidence">
+              <li v-for="item in hint.evidence" :key="item">{{ item }}</li>
+            </ul>
+          </article>
+        </div>
         <div v-if="analyses.length === 0" class="empty">等待 Agent 基于比赛数据生成战术分析...</div>
         <div v-else class="analysis-list">
           <article
@@ -476,6 +493,15 @@ const emptyStats: TeamStats = {
   possessionRate: 0
 }
 
+interface RealtimeTrendHint {
+  id: string
+  team: string
+  title: string
+  evidence: string[]
+  confidence: number
+  level: 'high' | 'medium'
+}
+
 const state = reactive<MatchState>({
   matchId: 'demo-match-001',
   currentMinute: 0,
@@ -542,6 +568,87 @@ const orderedAnalyses = computed(() => [...analyses.value].reverse())
 const backButtonText = computed(() => (previousListView.value === 'history' ? '返回历史任务' : '返回比赛库'))
 const currentMinuteEvents = computed(() => events.value.filter((event) => event.minute === state.currentMinute))
 const currentMinuteAnalyses = computed(() => analyses.value.filter((analysis) => analysis.minute === state.currentMinute))
+const recentWindowStart = computed(() => Math.max(0, state.currentMinute - 10))
+const recentWindowEvents = computed(() =>
+  events.value.filter((event) => event.minute >= recentWindowStart.value && event.minute <= state.currentMinute)
+)
+const realtimeTrendHints = computed<RealtimeTrendHint[]>(() => {
+  if (state.currentMinute <= 0 || recentWindowEvents.value.length < 2) return []
+
+  const stats = new Map<string, { total: number; threat: number; zones: Map<string, number> }>()
+  teamNames.value.forEach((team) => {
+    stats.set(team, { total: 0, threat: 0, zones: new Map<string, number>() })
+  })
+
+  recentWindowEvents.value.forEach((event) => {
+    const bucket = stats.get(event.team) ?? { total: 0, threat: 0, zones: new Map<string, number>() }
+    bucket.total += 1
+
+    if (['SHOT', 'GOAL', 'DANGEROUS_ATTACK', 'CORNER'].includes(event.type)) {
+      bucket.threat += 1
+    }
+
+    const zone = String(event.data.zone ?? 'unknown')
+    if (zone !== 'unknown') {
+      bucket.zones.set(zone, (bucket.zones.get(zone) ?? 0) + 1)
+    }
+
+    stats.set(event.team, bucket)
+  })
+
+  const hints: RealtimeTrendHint[] = []
+  const sortedByTotal = [...stats.entries()].sort((first, second) => second[1].total - first[1].total)
+  const [mostActive, secondActive] = sortedByTotal
+
+  if (mostActive && mostActive[1].total >= 3 && mostActive[1].total - (secondActive?.[1].total ?? 0) >= 2) {
+    hints.push({
+      id: `active-${mostActive[0]}-${state.currentMinute}`,
+      team: mostActive[0],
+      title: `${teamDisplayName(mostActive[0])} 近 10 分钟比赛参与度明显提高`,
+      evidence: [
+        `第 ${recentWindowStart.value} 到 ${state.currentMinute} 分钟，${teamDisplayName(mostActive[0])} 触发 ${mostActive[1].total} 个事件`,
+        `同期对手事件数为 ${secondActive?.[1].total ?? 0} 个`
+      ],
+      confidence: 0.68,
+      level: 'medium'
+    })
+  }
+
+  stats.forEach((teamStats, team) => {
+    if (teamStats.threat >= 2) {
+      hints.push({
+        id: `threat-${team}-${state.currentMinute}`,
+        team,
+        title: `${teamDisplayName(team)} 近期进攻威胁正在上升`,
+        evidence: [
+          `近 10 分钟出现 ${teamStats.threat} 次射门、进球、角球或危险进攻事件`,
+          `当前比赛时间为第 ${state.currentMinute} 分钟`
+        ],
+        confidence: teamStats.threat >= 3 ? 0.78 : 0.66,
+        level: teamStats.threat >= 3 ? 'high' : 'medium'
+      })
+    }
+
+    const topZone = [...teamStats.zones.entries()].sort((first, second) => second[1] - first[1])[0]
+    if (topZone && topZone[1] >= 2) {
+      hints.push({
+        id: `zone-${team}-${topZone[0]}-${state.currentMinute}`,
+        team,
+        title: `${teamDisplayName(team)} 近期更集中从${zoneText(topZone[0])}发起行动`,
+        evidence: [
+          `近 10 分钟 ${zoneText(topZone[0])} 相关事件达到 ${topZone[1]} 次`,
+          '该提示只代表阶段性趋势，仍需结合阵型和球员位置继续校验'
+        ],
+        confidence: 0.62,
+        level: 'medium'
+      })
+    }
+  })
+
+  return hints
+    .sort((first, second) => second.confidence - first.confidence)
+    .slice(0, 3)
+})
 const timelineMarks = computed(() => {
   const matchEnd = finalMinute.value
   const marks = [
@@ -1727,6 +1834,46 @@ function formatTime(value: string) {
   box-shadow:
     inset 0 0 0 1px rgba(242, 198, 109, 0.16),
     0 0 20px rgba(242, 198, 109, 0.1);
+}
+
+.trend-hints {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.trend-hint-card {
+  border: 1px solid rgba(125, 184, 255, 0.22);
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(20, 83, 135, 0.18), rgba(15, 28, 49, 0.7));
+  padding: 12px;
+  box-shadow: inset 4px 0 0 rgba(125, 184, 255, 0.7);
+}
+
+.trend-hint-card.trend-high {
+  border-color: rgba(242, 198, 109, 0.4);
+  background:
+    linear-gradient(90deg, rgba(113, 63, 18, 0.22), rgba(15, 28, 49, 0.76));
+  box-shadow: inset 4px 0 0 rgba(242, 198, 109, 0.86);
+}
+
+.trend-hint-card.team-home {
+  border-left: 4px solid #f2c66d;
+}
+
+.trend-hint-card.team-away {
+  border-left: 4px solid #60a5fa;
+}
+
+.trend-badge {
+  background: rgba(125, 184, 255, 0.16);
+  color: #bfdbfe;
+}
+
+.compact-evidence {
+  margin-top: 6px;
+  line-height: 1.55;
 }
 
 .compact-head {
