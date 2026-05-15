@@ -1,0 +1,27 @@
+import type {
+  MatchReport,
+  MatchState,
+  PersistenceStatus,
+  SimulationStatus,
+  TacticalAnalysis
+} from './types'
+
+async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init)
+  if (!response.ok) {
+    throw new Error(`请求失败：${response.status}`)
+  }
+  return response.json() as Promise<T>
+}
+
+export const legacyMatchApi = {
+  start: () => requestJson<SimulationStatus>('/match/simulate/start', { method: 'POST' }),
+  pause: () => requestJson<SimulationStatus>('/match/simulate/pause', { method: 'POST' }),
+  reset: () => requestJson<SimulationStatus>('/match/simulate/reset', { method: 'POST' }),
+  analyzeNow: () => requestJson<TacticalAnalysis[]>('/match/agent/analyze-now', { method: 'POST' }),
+  getStatus: () => requestJson<SimulationStatus>('/match/simulate/status'),
+  getState: () => requestJson<MatchState>('/match/state'),
+  getAnalyses: () => requestJson<TacticalAnalysis[]>('/match/analysis'),
+  getReport: () => requestJson<MatchReport>('/match/report'),
+  getPersistenceStatus: () => requestJson<PersistenceStatus>('/match/persistence/status')
+}
