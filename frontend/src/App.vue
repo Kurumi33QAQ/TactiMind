@@ -230,7 +230,7 @@
 
         <div class="scoreboard">
           <TeamStatsCard :team-name="teamNames[0]" :stats="homeStats" />
-          <div class="score">{{ homeStats.goals }} - {{ awayStats.goals }}</div>
+          <div :class="['score', { 'score-updated': scoreChanged }]">{{ homeStats.goals }} - {{ awayStats.goals }}</div>
           <TeamStatsCard :team-name="teamNames[1]" :stats="awayStats" />
         </div>
       </section>
@@ -372,7 +372,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { analysisTaskApi } from './api/analysisTaskApi'
 import { legacyMatchApi } from './api/legacyMatchApi'
@@ -463,7 +463,9 @@ const searchForm = reactive<MatchSearchParams>({
 const persistenceStatus = reactive<PersistenceStatus>({ enabled: false, mode: 'memory' })
 const wsConnected = ref(false)
 const connectionText = ref('未连接')
+const scoreChanged = ref(false)
 let socket: WebSocket | null = null
+let scoreResetTimer: number | null = null
 
 const teamNames = computed(() => {
   const names = Object.keys(state.teams)
@@ -476,6 +478,14 @@ const orderedEvents = computed(() => [...events.value].reverse())
 const orderedAnalyses = computed(() => [...analyses.value].reverse())
 const backButtonText = computed(() => (previousListView.value === 'history' ? '返回历史任务' : '返回比赛库'))
 
+watch(
+  () => [homeStats.value.goals, awayStats.value.goals],
+  (nextScore, previousScore) => {
+    if (!previousScore || nextScore[0] === previousScore[0] && nextScore[1] === previousScore[1]) return
+    markScoreChanged()
+  }
+)
+
 onMounted(() => {
   connectWebSocket()
   loadCatalogOptions()
@@ -486,6 +496,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   socket?.close()
+  if (scoreResetTimer) {
+    window.clearTimeout(scoreResetTimer)
+  }
 })
 
 async function runAction(action: 'start' | 'pause' | 'reset' | 'analyze') {
@@ -788,6 +801,21 @@ function handleWsMessage(message: WsMessage) {
 
 function confidenceText(value: number) {
   return `${Math.round(value * 100)}%`
+}
+
+function markScoreChanged() {
+  scoreChanged.value = false
+  window.requestAnimationFrame(() => {
+    scoreChanged.value = true
+  })
+
+  if (scoreResetTimer) {
+    window.clearTimeout(scoreResetTimer)
+  }
+
+  scoreResetTimer = window.setTimeout(() => {
+    scoreChanged.value = false
+  }, 850)
 }
 
 function analysisLevelClass(analysis: { evidence: string[]; confidence: number; riskLevel: string }) {
@@ -1186,7 +1214,7 @@ function formatTime(value: string) {
 .simulation-grid {
   flex: 1;
   min-height: 0;
-  grid-template-rows: minmax(360px, 0.58fr) minmax(240px, 0.42fr);
+  grid-template-rows: minmax(430px, 0.64fr) minmax(220px, 0.36fr);
   gap: 12px;
   overflow: hidden;
 }
@@ -1320,6 +1348,7 @@ function formatTime(value: string) {
   gap: 12px;
   align-items: center;
   min-height: 0;
+  flex: 1;
 }
 
 .simulation-grid .scoreboard :deep(.team-card) {
@@ -1389,6 +1418,31 @@ function formatTime(value: string) {
   font-size: 32px;
   font-weight: 900;
   color: #f3f7e8;
+  border-radius: 14px;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.score.score-updated {
+  color: #101827;
+  background: #f2c66d;
+  animation: score-pulse 0.85s ease;
+}
+
+@keyframes score-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(242, 198, 109, 0);
+  }
+
+  35% {
+    transform: scale(1.12);
+    box-shadow: 0 0 24px rgba(242, 198, 109, 0.48);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(242, 198, 109, 0);
+  }
 }
 
 .analysis-list,
