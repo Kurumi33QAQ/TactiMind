@@ -18,8 +18,12 @@ public class MatchStateAggregator {
         return state;
     }
 
+    public void advanceClock(MatchState state, int minute) {
+        state.setCurrentMinute(minute);
+        state.setUpdatedAt(Instant.now());
+    }
+
     public void apply(MatchState state, MatchEvent event, int cursor) {
-        state.setCurrentMinute(event.getMinute());
         state.setEventCursor(cursor);
         state.setUpdatedAt(Instant.now());
         ensureTeam(state, event.getTeam());

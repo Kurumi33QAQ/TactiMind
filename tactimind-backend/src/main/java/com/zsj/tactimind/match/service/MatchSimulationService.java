@@ -45,6 +45,7 @@ public class MatchSimulationService {
     private ScheduledFuture<?> scheduledTask;
     private int cursor;
     private boolean running;
+    private int finalMinute;
 
     public MatchSimulationService(
             MatchEventLoader eventLoader,
@@ -69,6 +70,10 @@ public class MatchSimulationService {
     @PostConstruct
     public synchronized void init() {
         events = eventLoader.loadEvents();
+        finalMinute = events.stream()
+                .mapToInt(MatchEvent::getMinute)
+                .max()
+                .orElse(90);
         state = aggregator.newState();
         cacheSnapshot();
         persistMatchInfo();
@@ -78,7 +83,7 @@ public class MatchSimulationService {
         if (running) {
             return status();
         }
-        if (cursor >= events.size()) {
+        if (cursor >= events.size() || state.isFinished() || state.getCurrentMinute() >= finalMinute) {
             resetInternal();
             clearPersistedTimeline();
         }
@@ -87,7 +92,7 @@ public class MatchSimulationService {
         cacheSnapshot();
         persistMatchInfo();
         broadcaster.broadcast("SIMULATION_STATUS", status());
-        scheduledTask = executor.scheduleAtFixedRate(this::publishNextEventSafely, 0, tickMillis, TimeUnit.MILLISECONDS);
+        scheduledTask = executor.scheduleAtFixedRate(this::advanceOneMinuteSafely, 0, tickMillis, TimeUnit.MILLISECONDS);
         return status();
     }
 
@@ -164,37 +169,49 @@ public class MatchSimulationService {
         return new SimulationStatus(running, state.isFinished(), cursor, events.size(), state.getCurrentMinute());
     }
 
-    private void publishNextEventSafely() {
+    private void advanceOneMinuteSafely() {
         try {
-            publishNextEvent();
+            advanceOneMinute();
         } catch (RuntimeException e) {
             pause();
             broadcaster.broadcast("SIMULATION_ERROR", e.getMessage());
         }
     }
 
-    private synchronized void publishNextEvent() {
-        if (!running || cursor >= events.size()) {
+    private synchronized void advanceOneMinute() {
+        if (!running) {
+            return;
+        }
+        if (state.getCurrentMinute() >= finalMinute) {
             finishIfNeeded();
             return;
         }
 
-        MatchEvent event = events.get(cursor);
+        int nextMinute = state.getCurrentMinute() + 1;
+        aggregator.advanceClock(state, nextMinute);
+
+        while (cursor < events.size() && events.get(cursor).getMinute() == nextMinute) {
+            publishEventAtCurrentMinute(events.get(cursor));
+        }
+
+        cacheSnapshot();
+        persistMatchInfo();
+        broadcaster.broadcast("MATCH_STATE", state);
+        broadcaster.broadcast("SIMULATION_STATUS", status());
+
+        if (state.isFinished() || state.getCurrentMinute() >= finalMinute) {
+            finishIfNeeded();
+        }
+    }
+
+    private void publishEventAtCurrentMinute(MatchEvent event) {
         cursor++;
         aggregator.apply(state, event, cursor);
         rememberRecentEvent(event);
         publishedEvents.add(event);
-        cacheSnapshot();
-        persistenceService.saveMatchInfo(state);
         persistenceService.saveEvent(state.getMatchId(), cursor, event);
-
         broadcaster.broadcast("MATCH_EVENT", event);
-        broadcaster.broadcast("MATCH_STATE", state);
         analyzeIfNeeded(event);
-
-        if (state.isFinished() || cursor >= events.size()) {
-            finishIfNeeded();
-        }
     }
 
     private void rememberRecentEvent(MatchEvent event) {
