@@ -7,7 +7,7 @@
       </div>
       <div class="topbar-right">
         <div class="nav-actions">
-          <el-button :type="currentView === 'catalog' ? 'primary' : 'default'" plain @click="showCatalogView">比赛库</el-button>
+          <el-button :type="currentView === 'catalog' || currentView === 'match-detail' ? 'primary' : 'default'" plain @click="showCatalogView">比赛库</el-button>
           <el-button :type="currentView === 'history' ? 'primary' : 'default'" plain @click="showHistoryView">历史任务</el-button>
         </div>
         <div class="connection">
@@ -66,8 +66,8 @@
           <span>｜{{ competitionDisplayName(selectedMatch.competition) }} {{ selectedMatch.season }}</span>
         </div>
         <div v-if="selectedMatch.simulated" class="inline-warning">模拟数据，仅用于战术演练</div>
-        <el-button type="success" :disabled="!selectedMatch.playable" @click="startSelectedMatch">
-          开始 Agent 分析
+        <el-button type="success" :disabled="!selectedMatch.playable" @click="enterSelectedMatchDetail">
+          进入分析页
         </el-button>
       </div>
 
@@ -81,6 +81,65 @@
           :selected="selectedMatch?.matchCode === match.matchCode"
           @select="selectMatch"
         />
+      </div>
+    </section>
+
+    <section v-if="currentView === 'match-detail' && selectedMatch" class="soft-card match-detail-page">
+      <div class="section-head">
+        <div>
+          <div class="section-title">比赛分析准备</div>
+          <div class="section-desc">先确认比赛信息和可用数据，再由你手动启动 Agent 分析。</div>
+        </div>
+        <el-button @click="showCatalogView">返回比赛库</el-button>
+      </div>
+
+      <div class="match-detail-hero">
+        <div class="detail-team">
+          <span class="team-logo detail-logo">{{ teamLogoText(selectedMatch.homeTeam) }}</span>
+          <strong>{{ teamDisplayName(selectedMatch.homeTeam) }}</strong>
+        </div>
+        <div class="detail-center">
+          <div class="detail-versus">vs</div>
+          <div>{{ competitionDisplayName(selectedMatch.competition) }}</div>
+          <div>{{ selectedMatch.season }} | {{ selectedMatch.matchDate }}</div>
+        </div>
+        <div class="detail-team away">
+          <strong>{{ teamDisplayName(selectedMatch.awayTeam) }}</strong>
+          <span class="team-logo detail-logo">{{ teamLogoText(selectedMatch.awayTeam) }}</span>
+        </div>
+      </div>
+
+      <div v-if="selectedMatch.simulated" class="detail-warning">
+        模拟数据，仅用于战术演练，不代表真实比赛事实。
+      </div>
+
+      <div class="match-detail-grid">
+        <article>
+          <span>数据类型</span>
+          <strong>{{ dataLevelName(selectedMatch.dataLevel) }}</strong>
+        </article>
+        <article>
+          <span>数据来源</span>
+          <strong>{{ sourceTypeName(selectedMatch.sourceType) }}</strong>
+        </article>
+        <article>
+          <span>是否可分析</span>
+          <strong>{{ selectedMatch.playable ? '可以分析' : '仅可查看' }}</strong>
+        </article>
+      </div>
+
+      <div class="capability-panel">
+        <div class="section-title">可用分析能力</div>
+        <div class="capability-tags">
+          <span v-for="capability in selectedMatch.capabilities" :key="capability">{{ capability }}</span>
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <el-button @click="showCatalogView">返回选择</el-button>
+        <el-button type="success" :disabled="!selectedMatch.playable" @click="startSelectedMatchAnalysis">
+          开始分析
+        </el-button>
       </div>
     </section>
 
@@ -327,10 +386,20 @@ import type {
   TeamStats,
   WsMessage
 } from './api/types'
-import { agentDisplayName, competitionDisplayName, eventTypeName, riskName, teamDisplayName, toolDisplayName } from './utils/labels'
+import {
+  agentDisplayName,
+  competitionDisplayName,
+  dataLevelName,
+  eventTypeName,
+  riskName,
+  sourceTypeName,
+  teamDisplayName,
+  toolDisplayName
+} from './utils/labels'
 import MatchCatalogCard from './components/MatchCatalogCard.vue'
 import TacticalCharts from './components/TacticalCharts.vue'
 import TeamStatsCard from './components/TeamStatsCard.vue'
+import { teamLogoText } from './utils/teamLogoMap'
 
 const emptyStats: TeamStats = {
   goals: 0,
@@ -365,7 +434,7 @@ const catalogOptions = ref<MatchCatalogItem[]>([])
 const matches = ref<MatchCatalogItem[]>([])
 const selectedMatch = ref<MatchCatalogItem | null>(null)
 const matchLoading = ref(false)
-const currentView = ref<'catalog' | 'simulation' | 'history'>('catalog')
+const currentView = ref<'catalog' | 'match-detail' | 'simulation' | 'history'>('catalog')
 const previousListView = ref<'catalog' | 'history'>('catalog')
 const activeDetailTab = ref('charts')
 const historyPage = ref(1)
@@ -504,7 +573,19 @@ function selectMatch(match: MatchCatalogItem) {
   selectedMatch.value = match
 }
 
-async function startSelectedMatch() {
+function enterSelectedMatchDetail() {
+  if (!selectedMatch.value) {
+    ElMessage.warning('请先选择一场可演练比赛。')
+    return
+  }
+  if (!selectedMatch.value.playable) {
+    ElMessage.warning('该比赛当前仅可查看，暂不支持启动 Agent 分析。')
+    return
+  }
+  currentView.value = 'match-detail'
+}
+
+async function startSelectedMatchAnalysis() {
   if (!selectedMatch.value) {
     ElMessage.warning('请先选择一场可演练比赛。')
     return
@@ -797,6 +878,112 @@ function formatTime(value: string) {
 .search-panel {
   margin-bottom: 16px;
   padding: 18px;
+}
+
+.match-detail-page {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.match-detail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(15, 28, 49, 0.7);
+  padding: 20px;
+}
+
+.detail-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 22px;
+}
+
+.detail-team.away {
+  justify-content: flex-end;
+}
+
+.detail-logo {
+  width: 48px;
+  height: 48px;
+}
+
+.detail-center {
+  display: grid;
+  gap: 6px;
+  color: #9fb0c7;
+  text-align: center;
+}
+
+.detail-versus {
+  color: #4ade80;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.detail-warning {
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 12px;
+  background: rgba(120, 53, 15, 0.26);
+  color: #fde68a;
+  padding: 12px;
+}
+
+.match-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.match-detail-grid article {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  background: rgba(15, 28, 49, 0.72);
+  padding: 14px;
+}
+
+.match-detail-grid span,
+.match-detail-grid strong {
+  display: block;
+}
+
+.match-detail-grid span {
+  color: #9fb0c7;
+}
+
+.match-detail-grid strong {
+  margin-top: 6px;
+  font-size: 18px;
+}
+
+.capability-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.capability-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.capability-tags span {
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 999px;
+  background: rgba(30, 64, 175, 0.18);
+  color: #bfdbfe;
+  padding: 6px 10px;
+}
+
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .simulation-title-panel {
@@ -1344,6 +1531,16 @@ function formatTime(value: string) {
     grid-template-columns: 1fr 1fr;
   }
 
+  .match-detail-hero,
+  .match-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-team,
+  .detail-team.away {
+    justify-content: center;
+  }
+
   .event-panel {
     grid-row: auto;
   }
@@ -1367,6 +1564,7 @@ function formatTime(value: string) {
   .match-card-grid,
   .search-form,
   .scoreboard,
+  .match-detail-grid,
   .report-metrics {
     grid-template-columns: 1fr;
   }
