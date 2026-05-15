@@ -5,10 +5,23 @@
         <div class="brand">TactiMind</div>
         <div class="subtitle">足球战术分析 AI Agent 系统</div>
       </div>
+      <div v-if="currentView === 'simulation'" class="topbar-match-summary">
+        <div class="topbar-match-title">
+          {{ selectedMatch ? `${teamDisplayName(selectedMatch.homeTeam)} vs ${teamDisplayName(selectedMatch.awayTeam)}` : '比赛模拟演练' }}
+        </div>
+        <div class="topbar-match-meta">
+          {{ selectedMatch ? `${competitionDisplayName(selectedMatch.competition)} ${selectedMatch.season} | ${selectedMatch.matchDate}` : '当前比赛演练' }}
+          <span v-if="selectedMatch?.simulated">模拟数据，仅用于战术演练</span>
+        </div>
+      </div>
       <div class="topbar-right">
-        <div class="nav-actions">
+        <div v-if="currentView !== 'simulation'" class="nav-actions">
           <el-button :type="currentView === 'catalog' || currentView === 'match-detail' ? 'primary' : 'default'" plain @click="showCatalogView">比赛库</el-button>
           <el-button :type="currentView === 'history' ? 'primary' : 'default'" plain @click="showHistoryView">历史任务</el-button>
+        </div>
+        <div v-else class="simulation-topbar-actions">
+          <el-button @click="backToCatalog">{{ backButtonText }}</el-button>
+          <el-button type="primary" plain @click="loadSnapshot">刷新看板</el-button>
         </div>
         <div class="connection">
           <span :class="['connection-dot', { connected: wsConnected }]"></span>
@@ -184,24 +197,6 @@
           @size-change="loadHistoryTasks"
           @current-change="loadHistoryTasks"
         />
-      </div>
-    </section>
-
-    <section v-if="currentView === 'simulation'" class="soft-card simulation-title-panel">
-      <div class="simulation-title">
-        <div>
-          <div class="section-title">
-            {{ selectedMatch ? `${teamDisplayName(selectedMatch.homeTeam)} vs ${teamDisplayName(selectedMatch.awayTeam)}` : '比赛模拟演练' }}
-          </div>
-          <div class="section-desc">
-            {{ selectedMatch ? `${competitionDisplayName(selectedMatch.competition)} ${selectedMatch.season} | ${selectedMatch.matchDate}` : '当前比赛演练' }}
-          </div>
-          <div v-if="selectedMatch?.simulated" class="inline-warning">该比赛为模拟数据，仅用于战术演练，不代表真实比赛事实。</div>
-        </div>
-        <div class="simulation-actions">
-          <el-button @click="backToCatalog">{{ backButtonText }}</el-button>
-          <el-button type="primary" plain @click="loadSnapshot">刷新看板</el-button>
-        </div>
       </div>
     </section>
 
@@ -1049,28 +1044,9 @@ function formatTime(value: string) {
   gap: 10px;
 }
 
-.simulation-title-panel {
-  flex: 0 0 auto;
-  margin-bottom: 10px;
-  padding: 12px 18px;
-  position: relative;
-  overflow: hidden;
-}
-
-.simulation-title-panel::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(242, 198, 109, 0.1), transparent 34%),
-    linear-gradient(180deg, transparent, rgba(125, 184, 255, 0.05));
-}
-
 .search-head,
 .search-actions,
 .selected-match,
-.simulation-title,
 .simulation-actions {
   display: flex;
   align-items: center;
@@ -1168,6 +1144,37 @@ function formatTime(value: string) {
   color: #b9c7db;
 }
 
+.topbar-match-summary {
+  flex: 1;
+  min-width: 280px;
+  margin: 0 18px;
+  border-left: 1px solid rgba(242, 198, 109, 0.18);
+  padding-left: 18px;
+}
+
+.topbar-match-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #f8f4ea;
+}
+
+.topbar-match-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  color: #b9c7db;
+  font-size: 13px;
+}
+
+.topbar-match-meta span {
+  border: 1px solid rgba(242, 198, 109, 0.28);
+  border-radius: 999px;
+  background: rgba(242, 198, 109, 0.12);
+  color: #fde7ae;
+  padding: 2px 8px;
+}
+
 .connection {
   display: flex;
   align-items: center;
@@ -1177,6 +1184,7 @@ function formatTime(value: string) {
 
 .topbar-right,
 .nav-actions,
+.simulation-topbar-actions,
 .history-toolbar,
 .history-card-actions {
   display: flex;
@@ -1214,7 +1222,7 @@ function formatTime(value: string) {
 .simulation-grid {
   flex: 1;
   min-height: 0;
-  grid-template-rows: minmax(430px, 0.64fr) minmax(220px, 0.36fr);
+  grid-template-rows: minmax(405px, 0.6fr) minmax(280px, 0.4fr);
   gap: 12px;
   overflow: hidden;
 }
@@ -1703,7 +1711,6 @@ function formatTime(value: string) {
   .topbar,
   .search-head,
   .selected-match,
-  .simulation-title,
   .history-card,
   .section-head {
     align-items: flex-start;
@@ -1716,6 +1723,18 @@ function formatTime(value: string) {
   .match-detail-grid,
   .report-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .topbar-match-summary {
+    width: 100%;
+    margin: 0;
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .topbar-match-meta {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>
