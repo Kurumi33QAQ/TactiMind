@@ -454,6 +454,10 @@ import { analysisTaskApi } from './api/analysisTaskApi'
 import { legacyMatchApi } from './api/legacyMatchApi'
 import { matchCatalogApi } from './api/matchCatalogApi'
 import type {
+  AgentTraceLog,
+  AnalysisTask,
+  AnalysisTaskHistoryItem,
+  DataInsight,
   MatchCatalogItem,
   MatchEvent,
   MatchReport,
@@ -461,9 +465,6 @@ import type {
   MatchState,
   PersistenceStatus,
   TacticalAnalysis,
-  AgentTraceLog,
-  AnalysisTask,
-  AnalysisTaskHistoryItem,
   TacticalReport,
   TeamStats,
   WsMessage
@@ -516,6 +517,7 @@ const state = reactive<MatchState>({
 
 const events = ref<MatchEvent[]>([])
 const analyses = ref<TacticalAnalysis[]>([])
+const dataInsights = ref<DataInsight[]>([])
 const report = ref<MatchReport | null>(null)
 const analysisTask = ref<AnalysisTask | null>(null)
 const agentTraces = ref<AgentTraceLog[]>([])
@@ -573,6 +575,23 @@ const recentWindowEvents = computed(() =>
   events.value.filter((event) => event.minute >= recentWindowStart.value && event.minute <= state.currentMinute)
 )
 const realtimeTrendHints = computed<RealtimeTrendHint[]>(() => {
+  const agentHints = dataInsights.value
+    .filter((insight) => insight.minute >= recentWindowStart.value && insight.minute <= state.currentMinute)
+    .map((insight) => ({
+      id: `agent-${insight.code}-${insight.subjectTeam}-${insight.minute}`,
+      team: insight.subjectTeam,
+      title: insight.summary,
+      evidence: insight.evidence,
+      confidence: Math.max(0.5, Math.min(0.95, insight.strength)),
+      level: insight.strength >= 0.78 ? 'high' : 'medium'
+    }) satisfies RealtimeTrendHint)
+    .sort((first, second) => second.confidence - first.confidence)
+    .slice(0, 3)
+
+  if (agentHints.length > 0) {
+    return agentHints
+  }
+
   if (state.currentMinute <= 0 || recentWindowEvents.value.length < 2) return []
 
   const stats = new Map<string, { total: number; threat: number; zones: Map<string, number> }>()
@@ -731,6 +750,7 @@ async function runAction(action: 'start' | 'pause' | 'reset' | 'analyze') {
       await legacyMatchApi.reset()
       events.value = []
       analyses.value = []
+      dataInsights.value = []
       report.value = null
       timelineEdited.value = false
     }
@@ -765,6 +785,7 @@ async function jumpToMinute() {
     const allEvents = await legacyMatchApi.getEvents()
     events.value = allEvents.filter((event) => event.minute <= status.currentMinute)
     analyses.value = analyses.value.filter((analysis) => analysis.minute <= status.currentMinute)
+    dataInsights.value = dataInsights.value.filter((insight) => insight.minute <= status.currentMinute)
     report.value = null
     timelineEdited.value = false
     seekMinute.value = status.currentMinute
@@ -1046,6 +1067,11 @@ function handleWsMessage(message: WsMessage) {
   }
   if (message.messageType === 'TACTICAL_ANALYSIS') {
     analyses.value.push(message.payload as TacticalAnalysis)
+    return
+  }
+  if (message.messageType === 'DATA_INSIGHT') {
+    dataInsights.value.push(message.payload as DataInsight)
+    dataInsights.value = dataInsights.value.slice(-20)
     return
   }
   if (message.messageType === 'SIMULATION_STATUS') {

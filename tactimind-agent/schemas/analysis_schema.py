@@ -47,6 +47,7 @@ class AnalyzeRequest(BaseModel):
 class DataInsight(BaseModel):
     """DataAgent 输出的数据洞察，只描述事实和趋势，不直接下战术结论。"""
 
+    minute: int = 0
     code: str
     subjectTeam: str
     targetTeam: Optional[str] = None
@@ -79,4 +80,5 @@ class AnalyzeResponse(BaseModel):
     """Agent 服务的统一响应结构。"""
 
     minute: int
+    dataInsights: List[DataInsight]
     analyses: List[TacticalAnalysis]

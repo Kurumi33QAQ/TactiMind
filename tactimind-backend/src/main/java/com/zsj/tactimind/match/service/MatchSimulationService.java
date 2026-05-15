@@ -1,6 +1,8 @@
 package com.zsj.tactimind.match.service;
 
 import com.zsj.tactimind.agent.AgentClient;
+import com.zsj.tactimind.agent.model.AgentAnalyzeResponse;
+import com.zsj.tactimind.agent.model.DataInsight;
 import com.zsj.tactimind.agent.model.TacticalAnalysis;
 import com.zsj.tactimind.match.cache.MatchRealtimeCacheFacade;
 import com.zsj.tactimind.match.model.EventType;
@@ -142,7 +144,9 @@ public class MatchSimulationService {
     }
 
     public synchronized List<TacticalAnalysis> analyzeNow() {
-        List<TacticalAnalysis> analyses = analyzeCurrentState();
+        AgentAnalyzeResponse response = analyzeCurrentState();
+        broadcastDataInsights(response.dataInsights());
+        List<TacticalAnalysis> analyses = response.analyses();
         rememberAnalyses(analyses);
         return analyses;
     }
@@ -283,7 +287,9 @@ public class MatchSimulationService {
             return;
         }
 
-        List<TacticalAnalysis> analyses = analyzeCurrentState();
+        AgentAnalyzeResponse response = analyzeCurrentState();
+        broadcastDataInsights(response.dataInsights());
+        List<TacticalAnalysis> analyses = response.analyses();
         rememberAnalyses(analyses);
         for (TacticalAnalysis analysis : analyses) {
             broadcaster.broadcast("TACTICAL_ANALYSIS", analysis);
@@ -297,12 +303,21 @@ public class MatchSimulationService {
         }
     }
 
-    private List<TacticalAnalysis> analyzeCurrentState() {
-        List<TacticalAnalysis> analyses = agentClient.analyze(state, List.copyOf(recentEvents));
-        if (analyses.isEmpty()) {
+    private AgentAnalyzeResponse analyzeCurrentState() {
+        AgentAnalyzeResponse response = agentClient.analyze(state, List.copyOf(recentEvents));
+        if (response.analyses().isEmpty()) {
             log.warn("Agent returned no analyses, minute={}, recentEvents={}", state.getCurrentMinute(), recentEvents.size());
         }
-        return analyses;
+        return response;
+    }
+
+    private void broadcastDataInsights(List<DataInsight> dataInsights) {
+        if (dataInsights == null || dataInsights.isEmpty()) {
+            return;
+        }
+        for (DataInsight insight : dataInsights) {
+            broadcaster.broadcast("DATA_INSIGHT", insight);
+        }
     }
 
     private boolean isTacticalEvent(MatchEvent event) {

@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zsj.tactimind.agent.model.AgentAnalyzeRequest;
 import com.zsj.tactimind.agent.model.AgentAnalyzeResponse;
-import com.zsj.tactimind.agent.model.TacticalAnalysis;
 import com.zsj.tactimind.match.model.MatchEvent;
 import com.zsj.tactimind.match.model.MatchState;
 import org.slf4j.Logger;
@@ -39,7 +38,7 @@ public class AgentClient {
      * 调用 Python Agent 服务。
      * 如果 Agent 暂时不可用，返回空列表，让比赛模拟继续运行。
      */
-    public List<TacticalAnalysis> analyze(MatchState state, List<MatchEvent> recentEvents) {
+    public AgentAnalyzeResponse analyze(MatchState state, List<MatchEvent> recentEvents) {
         try {
             AgentAnalyzeRequest request = new AgentAnalyzeRequest(state, recentEvents);
             String requestBody = objectMapper.writeValueAsString(request);
@@ -60,17 +59,24 @@ public class AgentClient {
             AgentAnalyzeResponse response = objectMapper.readValue(responseBody, AgentAnalyzeResponse.class);
             if (response == null || response.analyses() == null) {
                 log.warn("Python Agent returned empty response, minute={}", state.getCurrentMinute());
-                return List.of();
+                return emptyResponse(state);
             }
 
-            log.info("Python Agent returned {} analyses, minute={}", response.analyses().size(), state.getCurrentMinute());
-            return response.analyses();
+            log.info("Python Agent returned {} insights and {} analyses, minute={}",
+                    response.dataInsights() == null ? 0 : response.dataInsights().size(),
+                    response.analyses().size(),
+                    state.getCurrentMinute());
+            return response;
         } catch (JsonProcessingException e) {
             log.warn("Failed to serialize or parse Agent JSON, reason={}", e.getMessage());
-            return List.of();
+            return emptyResponse(state);
         } catch (RestClientException e) {
             log.warn("Failed to call Python Agent, url={}, reason={}", analyzeUrl, e.getMessage());
-            return List.of();
+            return emptyResponse(state);
         }
+    }
+
+    private AgentAnalyzeResponse emptyResponse(MatchState state) {
+        return new AgentAnalyzeResponse(state.getCurrentMinute(), List.of(), List.of());
     }
 }

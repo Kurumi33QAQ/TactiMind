@@ -24,6 +24,8 @@ def analyze(request: AnalyzeRequest) -> AnalyzeResponse:
     """战术分析入口：数据分析 -> 战术生成 -> 防幻觉校验。"""
     minute = request.matchState.currentMinute
     data_insights = data_agent.analyze(request)
+    for insight in data_insights:
+        insight.minute = minute
     tactical_candidates = tactics_agent.generate(minute, data_insights)
     verified_analyses = verify_agent.verify(minute, tactical_candidates)
-    return AnalyzeResponse(minute=minute, analyses=verified_analyses)
+    return AnalyzeResponse(minute=minute, dataInsights=data_insights, analyses=verified_analyses)

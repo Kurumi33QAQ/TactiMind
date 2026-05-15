@@ -34,6 +34,16 @@ export interface TacticalAnalysis {
   riskLevel: string
 }
 
+export interface DataInsight {
+  minute: number
+  code: string
+  subjectTeam: string
+  targetTeam?: string
+  summary: string
+  evidence: string[]
+  strength: number
+}
+
 export interface SimulationStatus {
   running: boolean
   finished: boolean

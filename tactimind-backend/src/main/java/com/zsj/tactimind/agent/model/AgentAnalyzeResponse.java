@@ -7,6 +7,7 @@ import java.util.List;
  */
 public record AgentAnalyzeResponse(
         int minute,
+        List<DataInsight> dataInsights,
         List<TacticalAnalysis> analyses
 ) {
 }
