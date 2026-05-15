@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TactiMind 实时战术看板</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --line: #d9e0ea;
+      --text: #172033;
+      --muted: #667085;
+      --green: #12715b;
+      --blue: #2457c5;
+      --red: #b42318;
+      --amber: #b54708;
+      --soft-blue: #eef4ff;
+      --soft-green: #ecfdf3;
+      --soft-red: #fff1f3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, "Microsoft YaHei", "微软雅黑", sans-serif;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(420px, 0.9fr) minmax(520px, 1.1fr);
+      gap: 16px;
+      padding: 16px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    button {
+      min-width: 64px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text);
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    button.primary {
+      background: var(--green);
+      border-color: var(--green);
+      color: #ffffff;
+    }
+
+    button.danger {
+      color: var(--red);
+    }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+
+    .dot.connected {
+      background: var(--green);
+    }
+
+    .layout-left {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .status-line {
+      color: var(--blue);
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: minmax(150px, 1fr) 96px minmax(150px, 1fr);
+      gap: 16px;
+      align-items: center;
+    }
+
+    .team-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 180px;
+    }
+
+    .team-name {
+      margin-bottom: 10px;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .score {
+      text-align: center;
+      font-size: 34px;
+      font-weight: 800;
+      color: #101828;
+      white-space: nowrap;
+    }
+
+    .feed {
+      height: calc(100vh - 160px);
+      min-height: 520px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .event-item,
+    .analysis-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .event-meta,
+    .analysis-meta,
+    .report-meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .event-desc,
+    .analysis-conclusion {
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .analysis-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .analysis-item.high {
+      background: var(--soft-red);
+      border-color: #fecdd3;
+    }
+
+    .analysis-item.medium {
+      background: #fffbeb;
+      border-color: #fedf89;
+    }
+
+    .analysis-item.low {
+      background: var(--soft-green);
+      border-color: #abefc6;
+    }
+
+    .evidence {
+      margin: 10px 0 0;
+      padding-left: 18px;
+      color: #344054;
+      line-height: 1.6;
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .report-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .report-summary {
+      border-radius: 8px;
+      background: var(--soft-blue);
+      padding: 12px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .report-metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #ffffff;
+    }
+
+    .metric-value {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .report-list-title {
+      margin: 12px 0 8px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .feed {
+        height: auto;
+        max-height: 540px;
+        min-height: 360px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      main {
+        padding: 10px;
+      }
+
+      .scoreboard {
+        grid-template-columns: 1fr;
+      }
+
+      .score {
+        order: -1;
+      }
+
+      .report-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>TactiMind 实时战术看板</h1>
+  <div class="connection">
+    <span id="connectionDot" class="dot"></span>
+    <span id="connectionText">未连接</span>
+  </div>
+</header>
+
+<main>
+  <div class="layout-left">
+    <section>
+      <h2>比赛模拟控制</h2>
+      <div class="toolbar">
+        <button class="primary" onclick="postAction('/match/simulate/start')">开始</button>
+        <button onclick="postAction('/match/simulate/pause')">暂停</button>
+        <button class="danger" onclick="postAction('/match/simulate/reset')">重置</button>
+        <button onclick="loadState()">刷新状态</button>
+        <button onclick="postAction('/match/agent/analyze-now')">立即分析</button>
+      </div>
+      <div id="statusLine" class="status-line">第 0 分钟 | 未开始</div>
+      <div class="scoreboard">
+        <div id="homeTeam" class="team-card"></div>
+        <div id="score" class="score">0 - 0</div>
+        <div id="awayTeam" class="team-card"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Agent 战术分析</h2>
+      <div id="analysisPanel" class="analysis-list">
+        <div class="empty">等待 Agent 基于比赛数据生成战术分析...</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="report-top">
+        <h2>赛后战术报告</h2>
+        <button onclick="loadReport()">刷新报告</button>
+      </div>
+      <div id="reportPanel">
+        <div class="empty">比赛结束后点击刷新报告，查看事件汇总和 Agent 分析记录。</div>
+      </div>
+    </section>
+  </div>
+
+  <section>
+    <h2>实时比赛事件流</h2>
+    <div id="feed" class="feed">
+      <div class="empty">等待比赛事件推送...</div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const feed = document.getElementById("feed");
+  const analysisPanel = document.getElementById("analysisPanel");
+  const reportPanel = document.getElementById("reportPanel");
+  const connectionDot = document.getElementById("connectionDot");
+  const connectionText = document.getElementById("connectionText");
+  const statusLine = document.getElementById("statusLine");
+  const homeTeam = document.getElementById("homeTeam");
+  const awayTeam = document.getElementById("awayTeam");
+  const score = document.getElementById("score");
+
+  let socket;
+  let hasEvent = false;
+  let hasAnalysis = false;
+
+  // 页面只负责展示，真正的比赛推进和 Agent 调用都在 Java 后端完成。
+  window.addEventListener("load", () => {
+    connectWebSocket();
+    loadState();
+    loadReport();
+  });
+
+  function connectWebSocket() {
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    socket = new WebSocket(`${protocol}://${location.host}/ws/match`);
+
+    socket.onopen = () => setConnection(true, "已连接");
+    socket.onclose = () => {
+      setConnection(false, "连接断开，正在重连...");
+      setTimeout(connectWebSocket, 2000);
+    };
+    socket.onerror = () => setConnection(false, "连接异常");
+    socket.onmessage = event => handleMessage(JSON.parse(event.data));
+  }
+
+  function handleMessage(message) {
+    if (message.messageType === "MATCH_EVENT") {
+      renderEvent(message.payload, true);
+      return;
+    }
+    if (message.messageType === "MATCH_STATE") {
+      renderState(message.payload);
+      return;
+    }
+    if (message.messageType === "SIMULATION_STATUS") {
+      renderStatus(message.payload);
+      return;
+    }
+    if (message.messageType === "TACTICAL_ANALYSIS") {
+      renderAnalysis(message.payload, true);
+      return;
+    }
+    if (message.messageType === "SIMULATION_ERROR") {
+      alert(`比赛模拟异常：${message.payload}`);
+    }
+  }
+
+  async function postAction(url) {
+    const response = await fetch(url, { method: "POST" });
+    if (!response.ok) {
+      alert("请求失败，请检查后端服务是否正常运行。");
+      return;
+    }
+
+    const result = await response.json();
+    if (url.endsWith("/reset")) {
+      resetPage();
+    }
+    if (url.endsWith("/analyze-now")) {
+      result.forEach(item => renderAnalysis(item, true));
+    } else {
+      renderStatus(result);
+    }
+    await loadState();
+    await loadReport();
+  }
+
+  async function loadState() {
+    const [stateResponse, statusResponse, analysisResponse] = await Promise.all([
+      fetch("/match/state"),
+      fetch("/match/simulate/status"),
+      fetch("/match/analysis")
+    ]);
+    if (stateResponse.ok) {
+      renderState(await stateResponse.json());
+    }
+    if (statusResponse.ok) {
+      renderStatus(await statusResponse.json());
+    }
+    if (analysisResponse.ok) {
+      renderAnalysisList(await analysisResponse.json());
+    }
+  }
+
+  async function loadReport() {
+    const [reportResponse, persistenceResponse] = await Promise.all([
+      fetch("/match/report"),
+      fetch("/match/persistence/status")
+    ]);
+    if (!reportResponse.ok || !persistenceResponse.ok) {
+      reportPanel.innerHTML = `<div class="empty">报告读取失败，请确认后端已经启动。</div>`;
+      return;
+    }
+    renderReport(await reportResponse.json(), await persistenceResponse.json());
+  }
+
+  function renderState(state) {
+    const teams = state.teams || {};
+    const names = Object.keys(teams);
+    const firstName = names[0] || "A队";
+    const secondName = names[1] || "B队";
+    const firstStats = teams[firstName] || {};
+    const secondStats = teams[secondName] || {};
+
+    homeTeam.innerHTML = renderTeam(firstName, firstStats);
+    awayTeam.innerHTML = renderTeam(secondName, secondStats);
+    score.textContent = `${firstStats.goals || 0} - ${secondStats.goals || 0}`;
+    statusLine.textContent = `第 ${state.currentMinute || 0} 分钟 | ${state.running ? "模拟中" : "已暂停"}${state.finished ? " | 已结束" : ""}`;
+  }
+
+  function renderStatus(status) {
+    statusLine.textContent = `第 ${status.currentMinute || 0} 分钟 | ${status.running ? "模拟中" : "已暂停"}${status.finished ? " | 已结束" : ""}`;
+  }
+
+  function renderTeam(name, stats) {
+    return `
+      <div class="team-name">${escapeHtml(name)}</div>
+      ${renderStat("射门", stats.shots)}
+      ${renderStat("射正", stats.shotsOnTarget)}
+      ${renderStat("角球", stats.corners)}
+      ${renderStat("危险进攻", stats.dangerousAttacks)}
+      ${renderStat("黄牌", stats.yellowCards)}
+      ${renderStat("控球率", `${stats.possessionRate || 0}%`)}
+    `;
+  }
+
+  function renderStat(label, value) {
+    return `<div class="stat-row"><span>${label}</span><strong>${value || 0}</strong></div>`;
+  }
+
+  function renderEvent(event, prepend) {
+    if (!hasEvent) {
+      feed.innerHTML = "";
+      hasEvent = true;
+    }
+    const item = document.createElement("div");
+    item.className = "event-item";
+    item.innerHTML = `
+      <div class="event-meta">第 ${event.minute} 分钟 | ${escapeHtml(event.team || "比赛")} | ${eventTypeName(event.type)}</div>
+      <div class="event-desc">${escapeHtml(event.description || "")}</div>
+    `;
+    prepend ? feed.prepend(item) : feed.appendChild(item);
+  }
+
+  function renderAnalysisList(list) {
+    if (!Array.isArray(list) || list.length === 0) {
+      if (!hasAnalysis) {
+        analysisPanel.innerHTML = `<div class="empty">等待 Agent 基于比赛数据生成战术分析...</div>`;
+      }
+      return;
+    }
+    analysisPanel.innerHTML = "";
+    hasAnalysis = true;
+    list.slice().reverse().forEach(item => renderAnalysis(item, false));
+  }
+
+  function renderAnalysis(analysis, prepend) {
+    if (!analysis) {
+      return;
+    }
+    if (!hasAnalysis) {
+      analysisPanel.innerHTML = "";
+      hasAnalysis = true;
+    }
+
+    const item = document.createElement("div");
+    item.className = `analysis-item ${riskClass(analysis.riskLevel)}`;
+    item.innerHTML = renderAnalysisContent(analysis);
+    prepend ? analysisPanel.prepend(item) : analysisPanel.appendChild(item);
+  }
+
+  function renderReport(report, persistence) {
+    const events = report.events || [];
+    const analyses = report.analyses || [];
+    const modeText = persistence.enabled ? "MySQL 持久化模式" : "内存临时模式";
+    const state = report.currentState || {};
+
+    reportPanel.innerHTML = `
+      <div class="report-summary">${escapeHtml(report.summary || "暂无报告摘要。")}</div>
+      <div class="report-grid">
+        <div class="report-metric">
+          <div class="metric-value">${events.length}</div>
+          <div class="metric-label">比赛事件数</div>
+        </div>
+        <div class="report-metric">
+          <div class="metric-value">${analyses.length}</div>
+          <div class="metric-label">Agent 分析数</div>
+        </div>
+        <div class="report-metric">
+          <div class="metric-value">${state.currentMinute || 0}</div>
+          <div class="metric-label">当前比赛分钟</div>
+        </div>
+      </div>
+      <div class="report-meta">报告来源：${modeText} | 比赛编号：${escapeHtml(report.matchId || "demo-match-001")}</div>
+      <div class="report-list-title">战术分析记录</div>
+      <div class="analysis-list">
+        ${analyses.length === 0 ? `<div class="empty">暂无 Agent 分析记录。</div>` : analyses.map(renderAnalysisCard).join("")}
+      </div>
+    `;
+  }
+
+  function renderAnalysisCard(analysis) {
+    return `<div class="analysis-item ${riskClass(analysis.riskLevel)}">${renderAnalysisContent(analysis)}</div>`;
+  }
+
+  function renderAnalysisContent(analysis) {
+    return `
+      <div class="analysis-meta">
+        第 ${analysis.minute} 分钟 | 风险：${riskName(analysis.riskLevel)} | 置信度：${formatConfidence(analysis.confidence)}
+      </div>
+      <div class="analysis-conclusion">${escapeHtml(analysis.conclusion || "当前数据不足，无法得出明确战术结论。")}</div>
+      ${renderEvidence(analysis.evidence)}
+    `;
+  }
+
+  function renderEvidence(evidence) {
+    if (!Array.isArray(evidence) || evidence.length === 0) {
+      return `<ul class="evidence"><li>暂无可追溯数据依据。</li></ul>`;
+    }
+    return `<ul class="evidence">${evidence.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+  }
+
+  function setConnection(connected, text) {
+    connectionDot.classList.toggle("connected", connected);
+    connectionText.textContent = text;
+  }
+
+  function resetPage() {
+    hasEvent = false;
+    hasAnalysis = false;
+    feed.innerHTML = `<div class="empty">等待比赛事件推送...</div>`;
+    analysisPanel.innerHTML = `<div class="empty">等待 Agent 基于比赛数据生成战术分析...</div>`;
+    reportPanel.innerHTML = `<div class="empty">比赛结束后点击刷新报告，查看事件汇总和 Agent 分析记录。</div>`;
+  }
+
+  function eventTypeName(type) {
+    const names = {
+      MATCH_START: "比赛开始",
+      GOAL: "进球",
+      SHOT: "射门",
+      SHOT_ON_TARGET: "射正",
+      POSSESSION_CHANGE: "控球率变化",
+      YELLOW_CARD: "黄牌",
+      SUBSTITUTION: "换人",
+      CORNER: "角球",
+      DANGEROUS_ATTACK: "危险进攻",
+      MATCH_END: "比赛结束"
+    };
+    return names[type] || type || "比赛事件";
+  }
+
+  function riskName(level) {
+    const names = { HIGH: "高", MEDIUM: "中", LOW: "低" };
+    return names[level] || "未知";
+  }
+
+  function riskClass(level) {
+    if (level === "HIGH") {
+      return "high";
+    }
+    if (level === "MEDIUM") {
+      return "medium";
+    }
+    return "low";
+  }
+
+  function formatConfidence(value) {
+    const number = Number(value || 0);
+    return `${Math.round(number * 100)}%`;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("\"", "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+</script>
+</body>
+</html>

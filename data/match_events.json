@@ -1,0 +1,155 @@
+[
+  {
+    "minute": 1,
+    "team": "Team A",
+    "type": "MATCH_START",
+    "player": "",
+    "description": "比赛开始。",
+    "data": {}
+  },
+  {
+    "minute": 8,
+    "team": "Team A",
+    "type": "SHOT",
+    "player": "Player 9",
+    "description": "A队完成一次禁区外远射。",
+    "data": {
+      "shot_on_target": false,
+      "zone": "middle"
+    }
+  },
+  {
+    "minute": 12,
+    "team": "Team B",
+    "type": "DANGEROUS_ATTACK",
+    "player": "Player 11",
+    "description": "B队在右路形成一次危险进攻。",
+    "data": {
+      "zone": "right"
+    }
+  },
+  {
+    "minute": 18,
+    "team": "Team B",
+    "type": "CORNER",
+    "player": "Player 7",
+    "description": "B队赢得一次角球机会。",
+    "data": {
+      "zone": "right"
+    }
+  },
+  {
+    "minute": 23,
+    "team": "Team B",
+    "type": "SHOT",
+    "player": "Player 10",
+    "description": "B队在禁区内完成射门，并命中球门范围。",
+    "data": {
+      "shot_on_target": true,
+      "zone": "right"
+    }
+  },
+  {
+    "minute": 29,
+    "team": "Team A",
+    "type": "POSSESSION_CHANGE",
+    "player": "",
+    "description": "比赛前30分钟后，双方控球率发生变化。",
+    "data": {
+      "team_a": 46,
+      "team_b": 54
+    }
+  },
+  {
+    "minute": 35,
+    "team": "Team B",
+    "type": "GOAL",
+    "player": "Player 10",
+    "description": "B队经过持续右路压迫后取得进球。",
+    "data": {
+      "zone": "right"
+    }
+  },
+  {
+    "minute": 41,
+    "team": "Team A",
+    "type": "YELLOW_CARD",
+    "player": "Player 4",
+    "description": "A队因一次战术犯规吃到黄牌。",
+    "data": {
+      "zone": "middle"
+    }
+  },
+  {
+    "minute": 48,
+    "team": "Team A",
+    "type": "SUBSTITUTION",
+    "player": "Player 18",
+    "description": "A队进行中场位置换人调整。",
+    "data": {
+      "out": "Player 8",
+      "in": "Player 18"
+    }
+  },
+  {
+    "minute": 54,
+    "team": "Team A",
+    "type": "SHOT",
+    "player": "Player 9",
+    "description": "A队在中路配合后创造一次射门机会，并命中球门范围。",
+    "data": {
+      "shot_on_target": true,
+      "zone": "middle"
+    }
+  },
+  {
+    "minute": 60,
+    "team": "Team B",
+    "type": "DANGEROUS_ATTACK",
+    "player": "Player 11",
+    "description": "B队再次攻击A队右后卫身后的空间。",
+    "data": {
+      "zone": "right"
+    }
+  },
+  {
+    "minute": 64,
+    "team": "Team B",
+    "type": "SHOT",
+    "player": "Player 9",
+    "description": "B队在右肋区域再次完成射门。",
+    "data": {
+      "shot_on_target": false,
+      "zone": "right"
+    }
+  },
+  {
+    "minute": 71,
+    "team": "Team A",
+    "type": "GOAL",
+    "player": "Player 9",
+    "description": "A队通过中路配合扳平比分。",
+    "data": {
+      "zone": "middle"
+    }
+  },
+  {
+    "minute": 80,
+    "team": "Team B",
+    "type": "POSSESSION_CHANGE",
+    "player": "",
+    "description": "比赛尾声阶段，B队保持了更多控球。",
+    "data": {
+      "team_a": 43,
+      "team_b": 57
+    }
+  },
+  {
+    "minute": 90,
+    "team": "Team A",
+    "type": "MATCH_END",
+    "player": "",
+    "description": "全场比赛结束。",
+    "data": {}
+  }
+]

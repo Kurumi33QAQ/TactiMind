@@ -1,0 +1,20 @@
+.idea/
+
+# Java
+tactimind-backend/target/
+
+# Python
+tactimind-agent/.venv/
+**/__pycache__/
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/dev.log
+frontend/dev.err
+frontend/tsconfig.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
