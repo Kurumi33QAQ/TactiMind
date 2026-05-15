@@ -1,6 +1,24 @@
 <template>
   <section :class="['chart-panel', { 'soft-card': !embedded, 'chart-panel-embedded': embedded }]">
     <div class="section-title">战术数据图表</div>
+    <div class="chart-snapshot">
+      <div>
+        <span>当前分钟</span>
+        <strong>第 {{ state.currentMinute }} 分钟</strong>
+      </div>
+      <div>
+        <span>近 10 分钟事件</span>
+        <strong>{{ recentEvents.length }} 个</strong>
+      </div>
+      <div>
+        <span>近期更活跃</span>
+        <strong>{{ activeTeamName }}</strong>
+      </div>
+      <div>
+        <span>最新事件</span>
+        <strong>{{ latestEventText }}</strong>
+      </div>
+    </div>
     <div class="chart-grid">
       <div ref="shotsChartRef" class="chart-box"></div>
       <div ref="possessionChartRef" class="chart-box"></div>
@@ -35,6 +53,28 @@ let eventChart: ECharts | null = null
 let resizeObserver: ResizeObserver | null = null
 
 const teams = computed(() => Object.entries(props.state.teams))
+const recentStartMinute = computed(() => Math.max(0, props.state.currentMinute - 10))
+const recentEvents = computed(() =>
+  props.events.filter(
+    (event) => event.minute >= recentStartMinute.value && event.minute <= props.state.currentMinute
+  )
+)
+const latestEventText = computed(() => {
+  const latestEvent = [...props.events].sort((first, second) => second.minute - first.minute)[0]
+  if (!latestEvent) return '暂无'
+  return `${latestEvent.minute}' ${teamDisplayName(latestEvent.team)} ${eventTypeName(latestEvent.type)}`
+})
+const activeTeamName = computed(() => {
+  if (recentEvents.value.length === 0) return '暂无'
+
+  const counter = new Map<string, number>()
+  recentEvents.value.forEach((event) => {
+    counter.set(event.team, (counter.get(event.team) ?? 0) + 1)
+  })
+
+  const [team] = [...counter.entries()].sort((first, second) => second[1] - first[1])[0]
+  return teamDisplayName(team)
+})
 
 onMounted(async () => {
   await nextTick()
@@ -114,51 +154,58 @@ function renderPossessionChart() {
 }
 
 function renderEventChart() {
-  const counter = new Map<string, number>()
-  props.events.forEach((event) => {
-    counter.set(event.type, (counter.get(event.type) ?? 0) + 1)
-  })
-
-  const data = [...counter.entries()]
-    .map(([type, count]) => ({ name: eventTypeName(type), value: count }))
-    .sort((first, second) => second.value - first.value)
-
-  const colors = ['#f2c66d', '#7db8ff', '#8fd3c8', '#f08a5d', '#b48cff', '#f7a6b6', '#8cc8ff']
+  const minuteAxis = buildRecentMinuteAxis()
+  const teamNames = teams.value.map(([team]) => team)
+  const colors = ['#f2c66d', '#7db8ff', '#8fd3c8', '#f08a5d']
 
   eventChart?.setOption({
     backgroundColor: 'transparent',
-    title: chartTitle('事件类型分布'),
-    tooltip: { trigger: 'item' },
+    title: chartTitle('近 10 分钟事件趋势'),
+    tooltip: { trigger: 'axis' },
+    legend: textLegend(teamNames.map((team) => teamDisplayName(team))),
+    grid: { left: 36, right: 20, top: 58, bottom: 30 },
+    xAxis: axis('category', minuteAxis.map((minute) => `${minute}'`)),
+    yAxis: axis('value'),
     color: colors,
-    legend: {
-      orient: 'vertical',
-      right: 12,
-      top: 'center',
-      itemWidth: 10,
-      itemHeight: 10,
-      itemGap: 10,
-      textStyle: { color: '#d4deee', fontSize: 12 }
-    },
     series: [
-      {
-        name: '事件数量',
-        type: 'pie',
-        radius: ['38%', '66%'],
-        center: ['32%', '54%'],
-        avoidLabelOverlap: true,
-        label: {
-          color: '#eef3fb',
-          formatter: '{c}',
-          fontWeight: 700
-        },
-        labelLine: {
-          length: 8,
-          length2: 6
-        },
-        data
-      }
+      ...teamNames.map((team) => ({
+        name: teamDisplayName(team),
+        type: 'line',
+        smooth: true,
+        symbolSize: 8,
+        data: minuteAxis.map((minute) => countTeamEventsAtMinute(team, minute)),
+        areaStyle: { opacity: 0.12 },
+        markLine: currentMinuteMarkLine()
+      }))
     ]
   })
+}
+
+function buildRecentMinuteAxis() {
+  const start = recentStartMinute.value
+  const end = Math.max(start, props.state.currentMinute)
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+}
+
+function countTeamEventsAtMinute(team: string, minute: number) {
+  return props.events.filter((event) => event.team === team && event.minute === minute).length
+}
+
+function currentMinuteMarkLine() {
+  return {
+    symbol: 'none',
+    label: {
+      formatter: '当前',
+      color: '#f2c66d',
+      fontSize: 11
+    },
+    lineStyle: {
+      color: '#f2c66d',
+      type: 'dashed',
+      width: 1
+    },
+    data: [{ xAxis: `${props.state.currentMinute}'` }]
+  }
 }
 
 function chartTitle(text: string) {
@@ -224,6 +271,40 @@ function observeChartSize() {
   gap: 12px;
 }
 
+.chart-snapshot {
+  display: grid;
+  grid-template-columns: 0.8fr 0.8fr 0.9fr 1.4fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.chart-snapshot div {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 10px;
+  background: rgba(11, 18, 31, 0.58);
+  padding: 8px 10px;
+}
+
+.chart-snapshot span,
+.chart-snapshot strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-snapshot span {
+  color: #9fb0c7;
+  font-size: 12px;
+}
+
+.chart-snapshot strong {
+  margin-top: 3px;
+  color: #f2c66d;
+  font-size: 14px;
+}
+
 .chart-box {
   height: 260px;
   border: 1px solid rgba(148, 163, 184, 0.18);
@@ -249,6 +330,10 @@ function observeChartSize() {
 @media (max-width: 1080px) {
   .chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .chart-snapshot {
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>
