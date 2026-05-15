@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class MatchSimulationService {
     private static final Logger log = LoggerFactory.getLogger(MatchSimulationService.class);
+    private static final Set<Double> SUPPORTED_SPEEDS = Set.of(0.5, 1.0, 2.0, 4.0, 8.0);
 
     private final MatchEventLoader eventLoader;
     private final MatchStateAggregator aggregator;
@@ -46,6 +48,7 @@ public class MatchSimulationService {
     private int cursor;
     private boolean running;
     private int finalMinute;
+    private double speed = 1.0;
 
     public MatchSimulationService(
             MatchEventLoader eventLoader,
@@ -92,7 +95,7 @@ public class MatchSimulationService {
         cacheSnapshot();
         persistMatchInfo();
         broadcaster.broadcast("SIMULATION_STATUS", status());
-        scheduledTask = executor.scheduleAtFixedRate(this::advanceOneMinuteSafely, 0, tickMillis, TimeUnit.MILLISECONDS);
+        scheduleClock();
         return status();
     }
 
@@ -166,7 +169,20 @@ public class MatchSimulationService {
     }
 
     public synchronized SimulationStatus status() {
-        return new SimulationStatus(running, state.isFinished(), cursor, events.size(), state.getCurrentMinute());
+        return new SimulationStatus(running, state.isFinished(), cursor, events.size(), state.getCurrentMinute(), speed);
+    }
+
+    public synchronized SimulationStatus updateSpeed(double speed) {
+        if (!SUPPORTED_SPEEDS.contains(speed)) {
+            throw new IllegalArgumentException("暂不支持该演练倍速");
+        }
+        this.speed = speed;
+        if (running) {
+            cancelTask();
+            scheduleClock();
+        }
+        broadcaster.broadcast("SIMULATION_STATUS", status());
+        return status();
     }
 
     private void advanceOneMinuteSafely() {
@@ -295,5 +311,18 @@ public class MatchSimulationService {
             scheduledTask.cancel(false);
             scheduledTask = null;
         }
+    }
+
+    private void scheduleClock() {
+        scheduledTask = executor.scheduleAtFixedRate(
+                this::advanceOneMinuteSafely,
+                0,
+                currentTickMillis(),
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    private long currentTickMillis() {
+        return Math.max(100L, Math.round(tickMillis / speed));
     }
 }

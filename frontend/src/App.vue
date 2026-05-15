@@ -216,9 +216,15 @@
           <el-button type="primary" plain @click="runAction('analyze')">立即分析</el-button>
         </div>
 
+        <div class="speed-control">
+          <span>演练倍速</span>
+          <el-segmented v-model="simulationSpeed" :options="speedOptions" @change="changeSimulationSpeed" />
+        </div>
+
         <div class="match-status">
           第 {{ state.currentMinute }} 分钟
           <span>{{ state.running ? '模拟中' : '已暂停' }}</span>
+          <span>{{ simulationSpeed }}x</span>
           <span v-if="state.finished">已结束</span>
         </div>
 
@@ -437,6 +443,14 @@ const matchLoading = ref(false)
 const currentView = ref<'catalog' | 'match-detail' | 'simulation' | 'history'>('catalog')
 const previousListView = ref<'catalog' | 'history'>('catalog')
 const activeDetailTab = ref('charts')
+const simulationSpeed = ref(1)
+const speedOptions = [
+  { label: '0.5x', value: 0.5 },
+  { label: '1x', value: 1 },
+  { label: '2x', value: 2 },
+  { label: '4x', value: 4 },
+  { label: '8x', value: 8 }
+]
 const historyPage = ref(1)
 const historySize = ref(8)
 const historyTotal = ref(0)
@@ -489,6 +503,16 @@ async function runAction(action: 'start' | 'pause' | 'reset' | 'analyze') {
       analyses.value.push(...result)
     }
     await loadSnapshot()
+  } catch (error) {
+    ElMessage.error(userError(error))
+  }
+}
+
+async function changeSimulationSpeed(value: number | string) {
+  try {
+    const nextSpeed = Number(value)
+    const status = await legacyMatchApi.updateSpeed(nextSpeed)
+    simulationSpeed.value = status.speed
   } catch (error) {
     ElMessage.error(userError(error))
   }
@@ -690,9 +714,11 @@ async function loadSnapshot() {
       legacyMatchApi.getAnalyses(),
       legacyMatchApi.getPersistenceStatus()
     ])
+    const latestStatus = await legacyMatchApi.getStatus()
     Object.assign(state, latestState)
     analyses.value = latestAnalyses
     Object.assign(persistenceStatus, latestPersistence)
+    simulationSpeed.value = latestStatus.speed
   } catch (error) {
     ElMessage.error(userError(error))
   }
@@ -742,11 +768,18 @@ function handleWsMessage(message: WsMessage) {
     return
   }
   if (message.messageType === 'SIMULATION_STATUS') {
-    const status = message.payload as { currentMinute: number; running: boolean; finished: boolean; eventCursor: number }
+    const status = message.payload as {
+      currentMinute: number
+      running: boolean
+      finished: boolean
+      eventCursor: number
+      speed: number
+    }
     state.currentMinute = status.currentMinute
     state.running = status.running
     state.finished = status.finished
     state.eventCursor = status.eventCursor
+    simulationSpeed.value = status.speed
   }
   if (message.messageType === 'SIMULATION_ERROR') {
     ElMessage.error('比赛模拟异常，请查看后端日志。')
@@ -1212,6 +1245,18 @@ function formatTime(value: string) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.speed-control span {
+  color: #9fb0c7;
+  font-weight: 700;
 }
 
 .match-status {

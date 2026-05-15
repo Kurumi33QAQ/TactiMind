@@ -5,6 +5,7 @@ public record SimulationStatus(
         boolean finished,
         int eventCursor,
         int totalEvents,
-        int currentMinute
+        int currentMinute,
+        double speed
 ) {
 }
