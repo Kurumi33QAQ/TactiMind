@@ -123,19 +123,39 @@ function renderEventChart() {
     .map(([type, count]) => ({ name: eventTypeName(type), value: count }))
     .sort((first, second) => second.value - first.value)
 
+  const colors = ['#d7f171', '#2fbf71', '#6fb7ff', '#f6c453', '#f08a5d', '#b48cff', '#7ad7d0']
+
   eventChart?.setOption({
     backgroundColor: 'transparent',
     title: chartTitle('事件类型分布'),
     tooltip: { trigger: 'item' },
-    grid: { left: 68, right: 18, top: 52, bottom: 26 },
-    xAxis: axis('value'),
-    yAxis: axis('category', data.map((item) => item.name)),
+    color: colors,
+    legend: {
+      orient: 'vertical',
+      right: 12,
+      top: 'center',
+      itemWidth: 10,
+      itemHeight: 10,
+      itemGap: 10,
+      textStyle: { color: '#c8d6cc', fontSize: 12 }
+    },
     series: [
       {
         name: '事件数量',
-        type: 'bar',
-        data: data.map((item) => item.value),
-        itemStyle: { color: '#f59e0b' }
+        type: 'pie',
+        radius: ['38%', '66%'],
+        center: ['32%', '54%'],
+        avoidLabelOverlap: true,
+        label: {
+          color: '#edf4ef',
+          formatter: '{c}',
+          fontWeight: 700
+        },
+        labelLine: {
+          length: 8,
+          length2: 6
+        },
+        data
       }
     ]
   })
@@ -189,12 +209,18 @@ function observeChartSize() {
 }
 
 .chart-panel-embedded {
-  padding: 8px 6px 0;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 4px 0;
 }
 
 .chart-grid {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 0.92fr) minmax(0, 1.16fr);
   gap: 12px;
 }
 
@@ -206,7 +232,8 @@ function observeChartSize() {
 }
 
 .chart-panel-embedded .chart-box {
-  height: clamp(170px, 20vh, 220px);
+  height: auto;
+  min-height: 0;
 }
 
 .chart-panel-embedded .section-title {

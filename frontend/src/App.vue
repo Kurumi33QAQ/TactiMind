@@ -260,7 +260,7 @@
 
       <section class="soft-card detail-panel">
         <el-tabs v-model="activeDetailTab" class="detail-tabs">
-          <el-tab-pane label="战术图表" name="charts">
+          <el-tab-pane label="战术图表" name="charts" class="charts-tab">
             <TacticalCharts :state="state" :events="events" embedded />
           </el-tab-pane>
           <el-tab-pane label="Agent 执行链路" name="trace">
@@ -901,6 +901,8 @@ function formatTime(value: string) {
 
 .topbar {
   margin-bottom: 18px;
+  border-bottom: 1px solid rgba(215, 241, 113, 0.12);
+  padding-bottom: 14px;
 }
 
 .simulation-mode .topbar {
@@ -1023,6 +1025,18 @@ function formatTime(value: string) {
   flex: 0 0 auto;
   margin-bottom: 10px;
   padding: 12px 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.simulation-title-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(215, 241, 113, 0.08), transparent 34%),
+    linear-gradient(180deg, transparent, rgba(47, 191, 113, 0.04));
 }
 
 .search-head,
@@ -1118,11 +1132,12 @@ function formatTime(value: string) {
   font-size: 26px;
   font-weight: 900;
   letter-spacing: 0;
+  color: #f3f7e8;
 }
 
 .subtitle {
   margin-top: 4px;
-  color: #9fb0c7;
+  color: #b7cdbd;
 }
 
 .connection {
@@ -1159,7 +1174,7 @@ function formatTime(value: string) {
 }
 
 .connection-dot.connected {
-  background: #22c55e;
+  background: #d7f171;
 }
 
 .dashboard-grid {
@@ -1217,6 +1232,27 @@ function formatTime(value: string) {
   padding-right: 4px;
 }
 
+.detail-tabs :deep(.el-tab-pane.charts-tab) {
+  overflow: hidden;
+  padding-right: 0;
+}
+
+.detail-tabs :deep(.el-tabs__item.is-active) {
+  color: #d7f171;
+}
+
+.detail-tabs :deep(.el-tabs__active-bar) {
+  background-color: #d7f171;
+}
+
+.detail-tabs :deep(.el-tabs__nav-wrap::after) {
+  background-color: rgba(215, 241, 113, 0.12);
+}
+
+.detail-tabs :deep(.el-tabs__item) {
+  color: #97a99d;
+}
+
 .control-panel,
 .analysis-panel,
 .report-panel,
@@ -1239,6 +1275,17 @@ function formatTime(value: string) {
   margin-bottom: 12px;
   font-size: 18px;
   font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.section-title::before {
+  content: '';
+  width: 4px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #d7f171, #2fbf71);
 }
 
 .actions {
@@ -1263,7 +1310,7 @@ function formatTime(value: string) {
   display: flex;
   gap: 12px;
   margin: 16px 0;
-  color: #4ade80;
+  color: #d7f171;
   font-weight: 800;
 }
 
@@ -1277,6 +1324,8 @@ function formatTime(value: string) {
 
 .simulation-grid .scoreboard :deep(.team-card) {
   padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(20, 38, 28, 0.94), rgba(12, 24, 19, 0.88));
 }
 
 .simulation-grid .scoreboard :deep(.team-title) {
@@ -1339,6 +1388,7 @@ function formatTime(value: string) {
   text-align: center;
   font-size: 32px;
   font-weight: 900;
+  color: #f3f7e8;
 }
 
 .analysis-list,
