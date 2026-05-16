@@ -340,15 +340,25 @@
             <TacticalCharts :state="state" :events="events" embedded />
           </el-tab-pane>
           <el-tab-pane label="Agent 执行链路" name="trace">
-            <div v-if="!analysisTask" class="empty">启动 Agent 分析后，将展示每一步工具调用过程。</div>
+            <div v-if="!analysisTask && visibleAgentTraces.length === 0" class="empty">
+              启动 Agent 分析或比赛演练后，将展示每一步工具调用过程。
+            </div>
             <div v-else>
-              <div class="task-progress">
+              <div v-if="analysisTask" class="task-progress">
                 <span>{{ analysisTask.currentStep }}</span>
                 <strong>{{ analysisTask.progress }}%</strong>
               </div>
-              <el-progress :percentage="analysisTask.progress" :stroke-width="10" />
+              <el-progress v-if="analysisTask" :percentage="analysisTask.progress" :stroke-width="10" />
+              <div v-else class="task-progress">
+                <span>实时演练链路</span>
+                <strong>{{ visibleAgentTraces.length }} 条</strong>
+              </div>
               <div class="trace-list">
-                <article v-for="trace in agentTraces" :key="`${trace.stepName}-${trace.toolName}`" class="trace-card">
+                <article
+                  v-for="trace in visibleAgentTraces"
+                  :key="`${trace.createdAt}-${trace.stepName}-${trace.toolName}`"
+                  class="trace-card"
+                >
                   <div class="trace-title">{{ trace.stepName }} | {{ trace.status }}</div>
                   <div class="trace-meta">
                     Agent：{{ trace.agentName }}（{{ agentDisplayName(trace.agentName) }}）
@@ -521,6 +531,7 @@ const dataInsights = ref<DataInsight[]>([])
 const report = ref<MatchReport | null>(null)
 const analysisTask = ref<AnalysisTask | null>(null)
 const agentTraces = ref<AgentTraceLog[]>([])
+const realtimeAgentTraces = ref<AgentTraceLog[]>([])
 const agentReport = ref<TacticalReport | null>(null)
 const historyTasks = ref<AnalysisTaskHistoryItem[]>([])
 const catalogOptions = ref<MatchCatalogItem[]>([])
@@ -567,6 +578,7 @@ const homeStats = computed(() => state.teams[teamNames.value[0]] ?? emptyStats)
 const awayStats = computed(() => state.teams[teamNames.value[1]] ?? emptyStats)
 const orderedEvents = computed(() => [...events.value].reverse())
 const orderedAnalyses = computed(() => [...analyses.value].reverse())
+const visibleAgentTraces = computed(() => [...realtimeAgentTraces.value, ...agentTraces.value].slice(-60).reverse())
 const backButtonText = computed(() => (previousListView.value === 'history' ? '返回历史任务' : '返回比赛库'))
 const currentMinuteEvents = computed(() => events.value.filter((event) => event.minute === state.currentMinute))
 const currentMinuteAnalyses = computed(() => analyses.value.filter((analysis) => analysis.minute === state.currentMinute))
@@ -751,6 +763,7 @@ async function runAction(action: 'start' | 'pause' | 'reset' | 'analyze') {
       events.value = []
       analyses.value = []
       dataInsights.value = []
+      realtimeAgentTraces.value = []
       report.value = null
       timelineEdited.value = false
     }
@@ -786,6 +799,7 @@ async function jumpToMinute() {
     events.value = allEvents.filter((event) => event.minute <= status.currentMinute)
     analyses.value = analyses.value.filter((analysis) => analysis.minute <= status.currentMinute)
     dataInsights.value = dataInsights.value.filter((insight) => insight.minute <= status.currentMinute)
+    realtimeAgentTraces.value = []
     report.value = null
     timelineEdited.value = false
     seekMinute.value = status.currentMinute
@@ -1072,6 +1086,11 @@ function handleWsMessage(message: WsMessage) {
   if (message.messageType === 'DATA_INSIGHT') {
     dataInsights.value.push(message.payload as DataInsight)
     dataInsights.value = dataInsights.value.slice(-20)
+    return
+  }
+  if (message.messageType === 'AGENT_TRACE') {
+    realtimeAgentTraces.value.push(message.payload as AgentTraceLog)
+    realtimeAgentTraces.value = realtimeAgentTraces.value.slice(-40)
     return
   }
   if (message.messageType === 'SIMULATION_STATUS') {

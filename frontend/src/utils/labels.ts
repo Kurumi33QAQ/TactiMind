@@ -95,7 +95,11 @@ export function toolDisplayName(toolName: string): string {
     calculate_match_stats: '计算比赛关键指标',
     retrieve_tactical_knowledge: '检索战术知识库',
     generate_tactical_report: '生成战术报告',
-    verify_report_evidence: '校验报告证据'
+    verify_report_evidence: '校验报告证据',
+    detect_repeated_pressure: '检测连续区域施压',
+    detect_shot_pressure: '检测射门压力变化',
+    detect_possession_gap: '检测控球率差距',
+    detect_realtime_trend: '检测实时比赛趋势'
   }
   return names[toolName] ?? toolName
 }

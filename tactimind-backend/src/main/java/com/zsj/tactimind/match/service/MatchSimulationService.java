@@ -4,6 +4,7 @@ import com.zsj.tactimind.agent.AgentClient;
 import com.zsj.tactimind.agent.model.AgentAnalyzeResponse;
 import com.zsj.tactimind.agent.model.DataInsight;
 import com.zsj.tactimind.agent.model.TacticalAnalysis;
+import com.zsj.tactimind.analysis.model.AgentTraceLog;
 import com.zsj.tactimind.match.cache.MatchRealtimeCacheFacade;
 import com.zsj.tactimind.match.model.EventType;
 import com.zsj.tactimind.match.model.MatchEvent;
@@ -18,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -317,7 +319,31 @@ public class MatchSimulationService {
         }
         for (DataInsight insight : dataInsights) {
             broadcaster.broadcast("DATA_INSIGHT", insight);
+            broadcaster.broadcast("AGENT_TRACE", toRealtimeTrace(insight));
         }
+    }
+
+    private AgentTraceLog toRealtimeTrace(DataInsight insight) {
+        return new AgentTraceLog(
+                "实时数据洞察",
+                "DataAgent",
+                toolNameOf(insight.code()),
+                "成功",
+                "第 " + insight.minute() + " 分钟，最近事件数 " + recentEvents.size(),
+                insight.summary() + "；依据：" + String.join("；", insight.evidence()),
+                0,
+                "",
+                Instant.now()
+        );
+    }
+
+    private String toolNameOf(String insightCode) {
+        return switch (insightCode) {
+            case "REPEATED_ZONE_PRESSURE" -> "detect_repeated_pressure";
+            case "SHOT_PRESSURE" -> "detect_shot_pressure";
+            case "POSSESSION_GAP" -> "detect_possession_gap";
+            default -> "detect_realtime_trend";
+        };
     }
 
     private boolean isTacticalEvent(MatchEvent event) {
