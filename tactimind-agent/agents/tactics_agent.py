@@ -35,6 +35,14 @@ class TacticsAgent:
                     confidence=self._confidence(insight.strength),
                     riskLevel=self._risk_level(insight.strength),
                 ))
+            elif insight.code == "PROFILE_CONTEXT_SUPPORT":
+                candidates.append(TacticalCandidate(
+                    minute=minute,
+                    conclusion=f"结合阵型、教练和关键球员特点，{team_label}当前趋势具备一定人员与战术结构支撑。",
+                    evidence=insight.evidence,
+                    confidence=self._confidence(insight.strength),
+                    riskLevel=self._risk_level(insight.strength),
+                ))
         return candidates
 
     def _confidence(self, strength: float) -> float:
@@ -54,5 +62,7 @@ class TacticsAgent:
         names = {
             "Team A": "A队",
             "Team B": "B队",
+            "Argentina": "阿根廷",
+            "France": "法国",
         }
         return names.get(team, team)

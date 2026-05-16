@@ -5,6 +5,8 @@ import com.zsj.tactimind.agent.model.AgentAnalyzeResponse;
 import com.zsj.tactimind.agent.model.DataInsight;
 import com.zsj.tactimind.agent.model.TacticalAnalysis;
 import com.zsj.tactimind.analysis.model.AgentTraceLog;
+import com.zsj.tactimind.catalog.model.MatchTacticalProfile;
+import com.zsj.tactimind.catalog.service.MatchTacticalProfileService;
 import com.zsj.tactimind.match.cache.MatchRealtimeCacheFacade;
 import com.zsj.tactimind.match.model.EventType;
 import com.zsj.tactimind.match.model.MatchEvent;
@@ -39,6 +41,7 @@ public class MatchSimulationService {
     private final MatchRealtimeCacheFacade cacheService;
     private final MatchPersistenceFacade persistenceService;
     private final MatchWebSocketBroadcaster broadcaster;
+    private final MatchTacticalProfileService profileService;
     private final long tickMillis;
     private final int recentWindowSize;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
@@ -61,6 +64,7 @@ public class MatchSimulationService {
             MatchRealtimeCacheFacade cacheService,
             MatchPersistenceFacade persistenceService,
             MatchWebSocketBroadcaster broadcaster,
+            MatchTacticalProfileService profileService,
             @Value("${tactimind.match.tick-millis}") long tickMillis,
             @Value("${tactimind.match.recent-window-size}") int recentWindowSize
     ) {
@@ -70,6 +74,7 @@ public class MatchSimulationService {
         this.cacheService = cacheService;
         this.persistenceService = persistenceService;
         this.broadcaster = broadcaster;
+        this.profileService = profileService;
         this.tickMillis = tickMillis;
         this.recentWindowSize = recentWindowSize;
     }
@@ -306,11 +311,17 @@ public class MatchSimulationService {
     }
 
     private AgentAnalyzeResponse analyzeCurrentState() {
-        AgentAnalyzeResponse response = agentClient.analyze(state, List.copyOf(recentEvents));
+        AgentAnalyzeResponse response = agentClient.analyze(state, List.copyOf(recentEvents), currentTacticalProfile());
         if (response.analyses().isEmpty()) {
             log.warn("Agent returned no analyses, minute={}, recentEvents={}", state.getCurrentMinute(), recentEvents.size());
         }
         return response;
+    }
+
+    private MatchTacticalProfile currentTacticalProfile() {
+        // 当前实时演练引擎还固定使用世界杯决赛 demo 事件流。
+        // 后续按比赛编号加载事件文件时，这里会改成 state.matchId -> matchCode 的映射。
+        return profileService.findByMatchCode("world-cup-2022-argentina-france").orElse(null);
     }
 
     private void broadcastDataInsights(List<DataInsight> dataInsights) {
@@ -342,6 +353,7 @@ public class MatchSimulationService {
             case "REPEATED_ZONE_PRESSURE" -> "detect_repeated_pressure";
             case "SHOT_PRESSURE" -> "detect_shot_pressure";
             case "POSSESSION_GAP" -> "detect_possession_gap";
+            case "PROFILE_CONTEXT_SUPPORT" -> "merge_tactical_profile";
             default -> "detect_realtime_trend";
         };
     }

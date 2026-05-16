@@ -99,6 +99,7 @@ export function toolDisplayName(toolName: string): string {
     detect_repeated_pressure: '检测连续区域施压',
     detect_shot_pressure: '检测射门压力变化',
     detect_possession_gap: '检测控球率差距',
+    merge_tactical_profile: '融合阵型阵容资料',
     detect_realtime_trend: '检测实时比赛趋势'
   }
   return names[toolName] ?? toolName

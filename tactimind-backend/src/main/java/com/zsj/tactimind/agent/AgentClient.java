@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zsj.tactimind.agent.model.AgentAnalyzeRequest;
 import com.zsj.tactimind.agent.model.AgentAnalyzeResponse;
+import com.zsj.tactimind.catalog.model.MatchTacticalProfile;
 import com.zsj.tactimind.match.model.MatchEvent;
 import com.zsj.tactimind.match.model.MatchState;
 import org.slf4j.Logger;
@@ -38,17 +39,21 @@ public class AgentClient {
      * 调用 Python Agent 服务。
      * 如果 Agent 暂时不可用，返回空列表，让比赛模拟继续运行。
      */
-    public AgentAnalyzeResponse analyze(MatchState state, List<MatchEvent> recentEvents) {
+    public AgentAnalyzeResponse analyze(
+            MatchState state,
+            List<MatchEvent> recentEvents,
+            MatchTacticalProfile tacticalProfile
+    ) {
         try {
-            AgentAnalyzeRequest request = new AgentAnalyzeRequest(state, recentEvents);
+            AgentAnalyzeRequest request = new AgentAnalyzeRequest(state, recentEvents, tacticalProfile);
             String requestBody = objectMapper.writeValueAsString(request);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
-            log.info("Calling Python Agent, url={}, minute={}, recentEvents={}, bodyLength={}",
-                    analyzeUrl, state.getCurrentMinute(), recentEvents.size(), requestBody.length());
+            log.info("Calling Python Agent, url={}, minute={}, recentEvents={}, hasProfile={}, bodyLength={}",
+                    analyzeUrl, state.getCurrentMinute(), recentEvents.size(), tacticalProfile != null, requestBody.length());
 
             String responseBody = restTemplate.postForObject(
                     analyzeUrl,

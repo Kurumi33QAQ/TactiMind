@@ -372,9 +372,9 @@
         </div>
 
         <div class="scoreboard">
-          <TeamStatsCard :team-name="teamNames[0]" :stats="homeStats" />
+          <TeamStatsCard :team-name="homeDisplayTeam" :stats="homeStats" />
           <div :class="['score', { 'score-updated': scoreChanged }]">{{ homeStats.goals }} - {{ awayStats.goals }}</div>
-          <TeamStatsCard :team-name="teamNames[1]" :stats="awayStats" />
+          <TeamStatsCard :team-name="awayDisplayTeam" :stats="awayStats" />
         </div>
       </section>
 
@@ -385,22 +385,35 @@
             当前第 {{ state.currentMinute }} 分钟：{{ currentMinuteEvents.length }} 个事件 / {{ currentMinuteAnalyses.length }} 条分析
           </span>
         </div>
-        <div v-if="realtimeTrendHints.length > 0" class="trend-hints">
+        <div v-if="realtimeTrendHints.length > 0" class="trend-hints trend-hints-compact">
           <article
-            v-for="hint in realtimeTrendHints"
-            :key="hint.id"
-            :class="['trend-hint-card', `trend-${hint.level}`, teamSideClass(hint.team)]"
+            :class="['trend-hint-card', 'trend-hint-primary', `trend-${realtimeTrendHints[0].level}`, teamSideClass(realtimeTrendHints[0].team)]"
           >
-            <div class="analysis-meta">
-              <span class="analysis-badge trend-badge">DataAgent 实时提示</span>
-              <span :class="['team-side-badge', teamSideClass(hint.team)]">{{ teamDisplayName(hint.team) }}</span>
-              近 10 分钟 | 置信度 {{ confidenceText(hint.confidence) }}
+            <div class="trend-primary-row">
+              <div class="analysis-meta">
+                <span class="analysis-badge trend-badge">DataAgent 实时提示</span>
+                <span :class="['team-side-badge', teamSideClass(realtimeTrendHints[0].team)]">
+                  {{ displayTeamName(realtimeTrendHints[0].team) }}
+                </span>
+                近 10 分钟 | 置信度 {{ confidenceText(realtimeTrendHints[0].confidence) }}
+              </div>
+              <strong>{{ realtimeTrendHints[0].title }}</strong>
             </div>
-            <div class="analysis-conclusion">{{ hint.title }}</div>
-            <ul class="evidence-list compact-evidence">
-              <li v-for="item in hint.evidence" :key="item">{{ item }}</li>
-            </ul>
+            <div class="trend-evidence-line">
+              {{ realtimeTrendHints[0].evidence[0] }}
+            </div>
           </article>
+
+          <div v-if="realtimeTrendHints.length > 1" class="trend-mini-list">
+            <span
+              v-for="hint in realtimeTrendHints.slice(1)"
+              :key="hint.id"
+              :class="['trend-mini-chip', teamSideClass(hint.team)]"
+              :title="`${hint.title}｜${hint.evidence.join('；')}`"
+            >
+              {{ displayTeamName(hint.team) }}：{{ hint.title }}
+            </span>
+          </div>
         </div>
         <div v-if="analyses.length === 0" class="empty">等待 Agent 基于比赛数据生成战术分析...</div>
         <div v-else class="analysis-list">
@@ -515,7 +528,7 @@
                 <div class="event-minute">{{ event.minute }}'</div>
                 <div>
                   <div class="event-meta">
-                    <span :class="['team-side-badge', teamSideClass(event.team)]">{{ teamDisplayName(event.team || '比赛') }}</span>
+                    <span :class="['team-side-badge', teamSideClass(event.team)]">{{ displayTeamName(event.team || '比赛') }}</span>
                     <span>{{ eventTypeName(event.type) }}</span>
                     <span>{{ zoneText(event.data.zone) }}</span>
                   </div>
@@ -673,6 +686,8 @@ const teamNames = computed(() => {
 
 const homeStats = computed(() => state.teams[teamNames.value[0]] ?? emptyStats)
 const awayStats = computed(() => state.teams[teamNames.value[1]] ?? emptyStats)
+const homeDisplayTeam = computed(() => selectedMatch.value?.homeTeam ?? selectedProfile.value?.home.team ?? teamNames.value[0])
+const awayDisplayTeam = computed(() => selectedMatch.value?.awayTeam ?? selectedProfile.value?.away.team ?? teamNames.value[1])
 const orderedEvents = computed(() => [...events.value].reverse())
 const orderedAnalyses = computed(() => [...analyses.value].reverse())
 const visibleAgentTraces = computed(() => [...realtimeAgentTraces.value, ...agentTraces.value].slice(-60).reverse())
@@ -732,9 +747,9 @@ const realtimeTrendHints = computed<RealtimeTrendHint[]>(() => {
     hints.push({
       id: `active-${mostActive[0]}-${state.currentMinute}`,
       team: mostActive[0],
-      title: `${teamDisplayName(mostActive[0])} 近 10 分钟比赛参与度明显提高`,
+      title: `${displayTeamName(mostActive[0])} 近 10 分钟比赛参与度明显提高`,
       evidence: [
-        `第 ${recentWindowStart.value} 到 ${state.currentMinute} 分钟，${teamDisplayName(mostActive[0])} 触发 ${mostActive[1].total} 个事件`,
+        `第 ${recentWindowStart.value} 到 ${state.currentMinute} 分钟，${displayTeamName(mostActive[0])} 触发 ${mostActive[1].total} 个事件`,
         `同期对手事件数为 ${secondActive?.[1].total ?? 0} 个`
       ],
       confidence: 0.68,
@@ -747,7 +762,7 @@ const realtimeTrendHints = computed<RealtimeTrendHint[]>(() => {
       hints.push({
         id: `threat-${team}-${state.currentMinute}`,
         team,
-        title: `${teamDisplayName(team)} 近期进攻威胁正在上升`,
+        title: `${displayTeamName(team)} 近期进攻威胁正在上升`,
         evidence: [
           `近 10 分钟出现 ${teamStats.threat} 次射门、进球、角球或危险进攻事件`,
           `当前比赛时间为第 ${state.currentMinute} 分钟`
@@ -762,7 +777,7 @@ const realtimeTrendHints = computed<RealtimeTrendHint[]>(() => {
       hints.push({
         id: `zone-${team}-${topZone[0]}-${state.currentMinute}`,
         team,
-        title: `${teamDisplayName(team)} 近期更集中从${zoneText(topZone[0])}发起行动`,
+        title: `${displayTeamName(team)} 近期更集中从${zoneText(topZone[0])}发起行动`,
         evidence: [
           `近 10 分钟 ${zoneText(topZone[0])} 相关事件达到 ${topZone[1]} 次`,
           '该提示只代表阶段性趋势，仍需结合阵型和球员位置继续校验'
@@ -1302,12 +1317,22 @@ function analysisLevelName(analysis: { evidence: string[]; confidence: number; r
   return names[level]
 }
 
+function displayTeamName(team?: string) {
+  if (team === teamNames.value[0] || team === 'Team A') {
+    return teamDisplayName(homeDisplayTeam.value)
+  }
+  if (team === teamNames.value[1] || team === 'Team B') {
+    return teamDisplayName(awayDisplayTeam.value)
+  }
+  return teamDisplayName(team || '比赛')
+}
+
 function teamSideClass(team?: string) {
-  const displayName = teamDisplayName(team || '')
-  if (displayName === teamDisplayName(teamNames.value[0])) {
+  const displayName = displayTeamName(team)
+  if (displayName === teamDisplayName(homeDisplayTeam.value)) {
     return 'team-home'
   }
-  if (displayName === teamDisplayName(teamNames.value[1])) {
+  if (displayName === teamDisplayName(awayDisplayTeam.value)) {
     return 'team-away'
   }
   return 'team-neutral'
@@ -1315,12 +1340,12 @@ function teamSideClass(team?: string) {
 
 function analysisTeamName(analysis: { conclusion: string; evidence: string[] }) {
   const text = `${analysis.conclusion} ${analysis.evidence.join(' ')}`
-  const homeName = teamDisplayName(teamNames.value[0])
-  const awayName = teamDisplayName(teamNames.value[1])
-  if (text.includes(homeName) || text.includes(teamNames.value[0])) {
+  const homeName = teamDisplayName(homeDisplayTeam.value)
+  const awayName = teamDisplayName(awayDisplayTeam.value)
+  if (text.includes(homeName) || text.includes(homeDisplayTeam.value) || text.includes(teamNames.value[0])) {
     return homeName
   }
-  if (text.includes(awayName) || text.includes(teamNames.value[1])) {
+  if (text.includes(awayName) || text.includes(awayDisplayTeam.value) || text.includes(teamNames.value[1])) {
     return awayName
   }
   return '双方'
@@ -2248,6 +2273,10 @@ function formatTime(value: string) {
   margin-bottom: 10px;
 }
 
+.trend-hints-compact {
+  flex: 0 0 auto;
+}
+
 .trend-hint-card {
   border: 1px solid rgba(125, 184, 255, 0.22);
   border-radius: 12px;
@@ -2255,6 +2284,31 @@ function formatTime(value: string) {
     linear-gradient(90deg, rgba(20, 83, 135, 0.18), rgba(15, 28, 49, 0.7));
   padding: 12px;
   box-shadow: inset 4px 0 0 rgba(125, 184, 255, 0.7);
+}
+
+.trend-hint-primary {
+  padding: 10px 12px;
+}
+
+.trend-primary-row {
+  display: grid;
+  gap: 5px;
+}
+
+.trend-primary-row strong {
+  color: #eef3fb;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.trend-evidence-line {
+  margin-top: 6px;
+  color: #c8d6e8;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trend-hint-card.trend-high {
@@ -2274,6 +2328,37 @@ function formatTime(value: string) {
 
 .trend-badge {
   background: rgba(125, 184, 255, 0.16);
+  color: #bfdbfe;
+}
+
+.trend-mini-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.trend-mini-chip {
+  min-width: 0;
+  max-width: 32%;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: rgba(11, 18, 31, 0.58);
+  color: #c8d6e8;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trend-mini-chip.team-home {
+  color: #fde7ae;
+}
+
+.trend-mini-chip.team-away {
   color: #bfdbfe;
 }
 

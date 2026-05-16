@@ -2,6 +2,7 @@ package com.zsj.tactimind.agent.model;
 
 import com.zsj.tactimind.match.model.MatchEvent;
 import com.zsj.tactimind.match.model.MatchState;
+import com.zsj.tactimind.catalog.model.MatchTacticalProfile;
 
 import java.util.List;
 
@@ -10,6 +11,7 @@ import java.util.List;
  */
 public record AgentAnalyzeRequest(
         MatchState matchState,
-        List<MatchEvent> recentEvents
+        List<MatchEvent> recentEvents,
+        MatchTacticalProfile tacticalProfile
 ) {
 }

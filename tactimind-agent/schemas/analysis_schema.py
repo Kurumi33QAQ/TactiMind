@@ -37,11 +37,48 @@ class MatchState(BaseModel):
     teams: Dict[str, TeamStats] = Field(default_factory=dict)
 
 
+class PlayerProfile(BaseModel):
+    """球员战术资料，来自 Java 后端的比赛 Profile。"""
+
+    number: int = 0
+    name: str
+    position: str = ""
+    role: str = ""
+    status: str = ""
+    pitchX: int = 0
+    pitchY: int = 0
+    abilityTags: List[str] = Field(default_factory=list)
+
+
+class TeamTacticalProfile(BaseModel):
+    """球队在当前比赛中的阵型、教练和球员上下文。"""
+
+    team: str
+    coach: str = ""
+    formation: str = ""
+    style: str = ""
+    pressingStyle: str = ""
+    buildUpFocus: str = ""
+    startingLineup: List[PlayerProfile] = Field(default_factory=list)
+    substitutes: List[PlayerProfile] = Field(default_factory=list)
+
+
+class MatchTacticalProfile(BaseModel):
+    """比赛战术资料，是事件流之外的辅助分析依据。"""
+
+    matchCode: str
+    home: TeamTacticalProfile
+    away: TeamTacticalProfile
+    keyFactors: List[str] = Field(default_factory=list)
+    dataNotes: List[str] = Field(default_factory=list)
+
+
 class AnalyzeRequest(BaseModel):
     """Java 后端调用 Agent 服务时提交的请求体。"""
 
     matchState: MatchState
     recentEvents: List[MatchEvent] = Field(default_factory=list)
+    tacticalProfile: Optional[MatchTacticalProfile] = None
 
 
 class DataInsight(BaseModel):
