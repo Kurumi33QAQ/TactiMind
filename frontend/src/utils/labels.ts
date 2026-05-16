@@ -1,4 +1,4 @@
-export function eventTypeName(type: string): string {
+﻿export function eventTypeName(type: string): string {
   const names: Record<string, string> = {
     MATCH_START: '比赛开始',
     GOAL: '进球',
@@ -9,6 +9,10 @@ export function eventTypeName(type: string): string {
     SUBSTITUTION: '换人',
     CORNER: '角球',
     DANGEROUS_ATTACK: '危险进攻',
+    KEY_PASS: '关键传球',
+    TACKLE: '抢断',
+    TURNOVER: '丢失球权',
+    TRANSITION: '攻防转换',
     MATCH_END: '比赛结束'
   }
   return names[type] ?? type
@@ -100,7 +104,11 @@ export function toolDisplayName(toolName: string): string {
     detect_shot_pressure: '检测射门压力变化',
     detect_possession_gap: '检测控球率差距',
     merge_tactical_profile: '融合阵型阵容资料',
+    detect_key_pass_creation: '检测关键传球机会',
+    detect_turnover_risk: '检测丢失球权风险',
+    detect_transition_threat: '检测攻防转换威胁',
     detect_realtime_trend: '检测实时比赛趋势'
   }
   return names[toolName] ?? toolName
 }
+

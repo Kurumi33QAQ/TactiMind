@@ -10,5 +10,9 @@ public enum EventType {
     SUBSTITUTION,
     CORNER,
     DANGEROUS_ATTACK,
+    KEY_PASS,
+    TACKLE,
+    TURNOVER,
+    TRANSITION,
     MATCH_END
 }

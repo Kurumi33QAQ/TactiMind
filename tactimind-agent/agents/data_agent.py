@@ -1,11 +1,13 @@
-from collections import Counter, defaultdict
+﻿from collections import Counter, defaultdict
 from typing import List
 
 from schemas.analysis_schema import AnalyzeRequest, DataInsight, MatchEvent, TeamTacticalProfile
 
 
 class DataAgent:
-    """数据分析 Agent：只从比赛状态和近期事件中提取可验证的数据趋势。"""
+    """数据分析 Agent：只从比赛状态、事件字段和战术资料中提取可验证的数据趋势。"""
+
+    ATTACK_EVENT_TYPES = {"DANGEROUS_ATTACK", "CORNER", "SHOT", "SHOT_ON_TARGET", "GOAL", "KEY_PASS", "TRANSITION"}
 
     def analyze(self, request: AnalyzeRequest) -> List[DataInsight]:
         """汇总多个规则检测结果，形成 DataInsight 列表。"""
@@ -15,6 +17,9 @@ class DataAgent:
             return insights
 
         insights.extend(self._detect_repeated_pressure(request, recent_events))
+        insights.extend(self._detect_key_pass_creation(request, recent_events))
+        insights.extend(self._detect_turnover_risk(request, recent_events))
+        insights.extend(self._detect_transition_threat(request, recent_events))
         insights.extend(self._detect_shot_pressure(request, recent_events))
         insights.extend(self._detect_possession_gap(request))
         insights.extend(self._detect_profile_context(request, recent_events))
@@ -26,7 +31,7 @@ class DataAgent:
         if not profile:
             return []
 
-        active_counter = Counter(event.team for event in events if event.type in {"SHOT", "SHOT_ON_TARGET", "GOAL", "DANGEROUS_ATTACK", "CORNER"})
+        active_counter = Counter(event.team for event in events if event.type in self.ATTACK_EVENT_TYPES)
         insights: List[DataInsight] = []
 
         for team, event_count in active_counter.items():
@@ -37,7 +42,7 @@ class DataAgent:
             team_label = self._team_name(team_profile.team)
             evidence = [
                 f"{team_label}本场阵型为{team_profile.formation}，主教练为{team_profile.coach}",
-                f"近段时间{team_label}出现{event_count}次射门、角球、进球或危险进攻事件"
+                f"近段时间{team_label}出现{event_count}次射门、关键传球、角球、进球或危险进攻事件"
             ]
             if key_player:
                 evidence.append(
@@ -67,7 +72,7 @@ class DataAgent:
         """检测某队是否在同一区域连续制造进攻压力。"""
         attack_events_by_team_zone: dict[tuple[str, str], list[MatchEvent]] = defaultdict(list)
         for event in events:
-            if event.type not in {"DANGEROUS_ATTACK", "CORNER", "SHOT", "SHOT_ON_TARGET", "GOAL"}:
+            if event.type not in self.ATTACK_EVENT_TYPES:
                 continue
             zone = str(event.data.get("zone", "unknown"))
             attack_events_by_team_zone[(event.team, zone)].append(event)
@@ -89,6 +94,76 @@ class DataAgent:
                 summary=f"{team_label}在{self._zone_name(zone)}形成连续压力",
                 evidence=evidence,
                 strength=min(1.0, 0.45 + len(zone_events) * 0.12),
+            ))
+        return insights
+
+    def _detect_key_pass_creation(self, request: AnalyzeRequest, events: List[MatchEvent]) -> List[DataInsight]:
+        """检测关键传球是否开始带来稳定机会来源。"""
+        key_passes_by_team: dict[str, list[MatchEvent]] = defaultdict(list)
+        for event in events:
+            if event.type == "KEY_PASS" or event.data.get("is_key_pass") is True:
+                key_passes_by_team[event.team].append(event)
+
+        insights: List[DataInsight] = []
+        for team, key_passes in key_passes_by_team.items():
+            subject_team = self._subject_team(team, request)
+            team_label = self._team_name(subject_team)
+            evidence = [self._format_event_context(event, f"{team_label}完成关键传球") for event in key_passes]
+            insights.append(DataInsight(
+                code="KEY_PASS_CREATION",
+                subjectTeam=subject_team,
+                summary=f"{team_label}开始通过关键传球制造机会",
+                evidence=evidence,
+                strength=min(0.86, 0.54 + len(key_passes) * 0.13),
+            ))
+        return insights
+
+    def _detect_turnover_risk(self, request: AnalyzeRequest, events: List[MatchEvent]) -> List[DataInsight]:
+        """检测推进阶段的丢失球权风险。"""
+        turnovers_by_team: dict[str, list[MatchEvent]] = defaultdict(list)
+        for event in events:
+            if event.type == "TURNOVER" or event.data.get("result") == "lost":
+                turnovers_by_team[event.team].append(event)
+
+        insights: List[DataInsight] = []
+        for team, turnovers in turnovers_by_team.items():
+            subject_team = self._subject_team(team, request)
+            team_label = self._team_name(subject_team)
+            evidence = [self._format_event_context(event, f"{team_label}丢失球权") for event in turnovers]
+            insights.append(DataInsight(
+                code="TURNOVER_RISK",
+                subjectTeam=subject_team,
+                summary=f"{team_label}推进阶段出现丢失球权风险",
+                evidence=evidence,
+                strength=min(0.82, 0.5 + len(turnovers) * 0.14),
+            ))
+        return insights
+
+    def _detect_transition_threat(self, request: AnalyzeRequest, events: List[MatchEvent]) -> List[DataInsight]:
+        """检测攻防转换阶段是否持续制造威胁。"""
+        transition_events_by_team: dict[str, list[MatchEvent]] = defaultdict(list)
+        for event in events:
+            if event.type == "TRANSITION" or event.data.get("phase") == "transition" or event.data.get("transition") is True:
+                transition_events_by_team[event.team].append(event)
+
+        insights: List[DataInsight] = []
+        for team, transition_events in transition_events_by_team.items():
+            if len(transition_events) < 2:
+                continue
+            subject_team = self._subject_team(team, request)
+            team_label = self._team_name(subject_team)
+            start_minute = min(event.minute for event in transition_events)
+            end_minute = max(event.minute for event in transition_events)
+            evidence = [
+                f"第{start_minute}到{end_minute}分钟，{team_label}出现{len(transition_events)}次攻防转换相关事件"
+            ]
+            evidence.extend(self._format_event_context(event, "转换事件") for event in transition_events[:3])
+            insights.append(DataInsight(
+                code="TRANSITION_THREAT",
+                subjectTeam=subject_team,
+                summary=f"{team_label}在攻防转换阶段的威胁上升",
+                evidence=evidence,
+                strength=min(0.9, 0.5 + len(transition_events) * 0.1),
             ))
         return insights
 
@@ -144,14 +219,64 @@ class DataAgent:
             strength=min(1.0, 0.5 + gap / 100),
         )]
 
+    def _format_event_context(self, event: MatchEvent, prefix: str) -> str:
+        """把扩展事件字段组织成中文证据，避免 Agent 只输出空泛判断。"""
+        zone = self._zone_name(str(event.data.get("zone", "unknown")))
+        direction = self._direction_name(str(event.data.get("direction", "unknown")))
+        phase = self._phase_name(str(event.data.get("phase", "unknown")))
+        result = self._result_name(str(event.data.get("result", "unknown")))
+        return f"第{event.minute}分钟，{prefix}：区域={zone}，方向={direction}，阶段={phase}，结果={result}"
+
     def _zone_name(self, zone: str) -> str:
         """把事件里的英文区域值转换成中文展示。"""
         names = {
             "left": "左路",
             "right": "右路",
             "middle": "中路",
+            "left_half_space": "左肋部",
+            "right_half_space": "右肋部",
+            "box": "禁区",
+            "unknown": "未知区域",
         }
         return names.get(zone, zone)
+
+    def _direction_name(self, direction: str) -> str:
+        """把推进方向转换成中文展示。"""
+        names = {
+            "left": "左路",
+            "right": "右路",
+            "middle": "中路",
+            "unknown": "未知方向",
+        }
+        return names.get(direction, direction)
+
+    def _phase_name(self, phase: str) -> str:
+        """把比赛阶段转换成中文展示。"""
+        names = {
+            "build_up": "组织推进",
+            "transition": "攻防转换",
+            "set_piece": "定位球",
+            "defense": "防守阶段",
+            "adjustment": "人员调整",
+            "unknown": "未知阶段",
+        }
+        return names.get(phase, phase)
+
+    def _result_name(self, result: str) -> str:
+        """把事件结果转换成中文展示。"""
+        names = {
+            "success": "成功",
+            "lost": "丢失球权",
+            "threat": "形成威胁",
+            "goal": "进球",
+            "on_target": "射正",
+            "off_target": "偏出",
+            "corner_won": "赢得角球",
+            "yellow_card": "黄牌",
+            "substitution": "换人",
+            "unknown": "未知结果",
+        }
+        return names.get(result, result)
 
     def _subject_team(self, team: str, request: AnalyzeRequest) -> str:
         """把事件流里的 Team A/B 映射成 Profile 里的真实球队名。"""

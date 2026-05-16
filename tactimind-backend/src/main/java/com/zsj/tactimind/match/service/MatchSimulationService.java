@@ -354,6 +354,9 @@ public class MatchSimulationService {
             case "SHOT_PRESSURE" -> "detect_shot_pressure";
             case "POSSESSION_GAP" -> "detect_possession_gap";
             case "PROFILE_CONTEXT_SUPPORT" -> "merge_tactical_profile";
+            case "KEY_PASS_CREATION" -> "detect_key_pass_creation";
+            case "TURNOVER_RISK" -> "detect_turnover_risk";
+            case "TRANSITION_THREAT" -> "detect_transition_threat";
             default -> "detect_realtime_trend";
         };
     }
@@ -365,7 +368,11 @@ public class MatchSimulationService {
                 || type == EventType.SHOT_ON_TARGET
                 || type == EventType.POSSESSION_CHANGE
                 || type == EventType.CORNER
-                || type == EventType.DANGEROUS_ATTACK;
+                || type == EventType.DANGEROUS_ATTACK
+                || type == EventType.KEY_PASS
+                || type == EventType.TACKLE
+                || type == EventType.TURNOVER
+                || type == EventType.TRANSITION;
     }
 
     private void finishIfNeeded() {
@@ -420,3 +427,5 @@ public class MatchSimulationService {
         return Math.max(100L, Math.round(tickMillis / speed));
     }
 }
+
+

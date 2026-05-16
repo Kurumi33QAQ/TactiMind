@@ -1,4 +1,4 @@
-from typing import List
+﻿from typing import List
 
 from schemas.analysis_schema import DataInsight, TacticalCandidate
 
@@ -35,6 +35,30 @@ class TacticsAgent:
                     confidence=self._confidence(insight.strength),
                     riskLevel=self._risk_level(insight.strength),
                 ))
+            elif insight.code == "KEY_PASS_CREATION":
+                candidates.append(TacticalCandidate(
+                    minute=minute,
+                    conclusion=f"{team_label}开始通过关键传球撬动防线，进攻组织质量有所提升。",
+                    evidence=insight.evidence,
+                    confidence=self._confidence(insight.strength),
+                    riskLevel=self._risk_level(insight.strength),
+                ))
+            elif insight.code == "TURNOVER_RISK":
+                candidates.append(TacticalCandidate(
+                    minute=minute,
+                    conclusion=f"{team_label}在推进阶段存在丢失球权风险，需要警惕被对手直接打反击。",
+                    evidence=insight.evidence,
+                    confidence=self._confidence(insight.strength),
+                    riskLevel=self._risk_level(insight.strength),
+                ))
+            elif insight.code == "TRANSITION_THREAT":
+                candidates.append(TacticalCandidate(
+                    minute=minute,
+                    conclusion=f"{team_label}攻防转换威胁正在上升，对手回防和防线保护压力增大。",
+                    evidence=insight.evidence,
+                    confidence=self._confidence(insight.strength),
+                    riskLevel=self._risk_level(insight.strength),
+                ))
             elif insight.code == "PROFILE_CONTEXT_SUPPORT":
                 candidates.append(TacticalCandidate(
                     minute=minute,
@@ -66,3 +90,5 @@ class TacticsAgent:
             "France": "法国",
         }
         return names.get(team, team)
+
+

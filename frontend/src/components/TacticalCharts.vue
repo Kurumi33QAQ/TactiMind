@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <section :class="['chart-panel', { 'soft-card': !embedded, 'chart-panel-embedded': embedded }]">
     <div class="section-title">战术数据图表</div>
     <div class="chart-snapshot">
@@ -41,6 +41,8 @@ const props = defineProps<{
   state: MatchState
   events: MatchEvent[]
   embedded?: boolean
+  homeTeamName?: string
+  awayTeamName?: string
 }>()
 
 const shotsChartRef = ref<HTMLDivElement | null>(null)
@@ -62,7 +64,7 @@ const recentEvents = computed(() =>
 const latestEventText = computed(() => {
   const latestEvent = [...props.events].sort((first, second) => second.minute - first.minute)[0]
   if (!latestEvent) return '暂无'
-  return `${latestEvent.minute}' ${teamDisplayName(latestEvent.team)} ${eventTypeName(latestEvent.type)}`
+  return `${latestEvent.minute}' ${displayTeamName(latestEvent.team)} ${eventTypeName(latestEvent.type)}`
 })
 const activeTeamName = computed(() => {
   if (recentEvents.value.length === 0) return '暂无'
@@ -73,7 +75,7 @@ const activeTeamName = computed(() => {
   })
 
   const [team] = [...counter.entries()].sort((first, second) => second[1] - first[1])[0]
-  return teamDisplayName(team)
+  return displayTeamName(team)
 })
 
 onMounted(async () => {
@@ -109,8 +111,17 @@ function renderCharts() {
   renderEventChart()
 }
 
+function displayTeamName(team: string) {
+  if (team === 'Team A' && props.homeTeamName) {
+    return teamDisplayName(props.homeTeamName)
+  }
+  if (team === 'Team B' && props.awayTeamName) {
+    return teamDisplayName(props.awayTeamName)
+  }
+  return teamDisplayName(team)
+}
 function renderShotsChart() {
-  const names = teams.value.map(([team]) => teamDisplayName(team))
+  const names = teams.value.map(([team]) => displayTeamName(team))
   const shots = teams.value.map(([, stats]) => stats.shots)
   const shotsOnTarget = teams.value.map(([, stats]) => stats.shotsOnTarget)
 
@@ -131,7 +142,7 @@ function renderShotsChart() {
 
 function renderPossessionChart() {
   const data = teams.value.map(([team, stats]) => ({
-    name: teamDisplayName(team),
+    name: displayTeamName(team),
     value: stats.possessionRate || 0
   }))
 
@@ -162,14 +173,14 @@ function renderEventChart() {
     backgroundColor: 'transparent',
     title: chartTitle('近 10 分钟事件趋势'),
     tooltip: { trigger: 'axis' },
-    legend: textLegend(teamNames.map((team) => teamDisplayName(team))),
+    legend: textLegend(teamNames.map((team) => displayTeamName(team))),
     grid: { left: 36, right: 20, top: 58, bottom: 30 },
     xAxis: axis('category', minuteAxis.map((minute) => `${minute}'`)),
     yAxis: axis('value'),
     color: colors,
     series: [
       ...teamNames.map((team) => ({
-        name: teamDisplayName(team),
+        name: displayTeamName(team),
         type: 'line',
         smooth: true,
         symbolSize: 8,
@@ -337,3 +348,5 @@ function observeChartSize() {
   }
 }
 </style>
+
+

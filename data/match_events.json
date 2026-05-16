@@ -1,52 +1,106 @@
-[
+﻿[
   {
     "minute": 1,
     "team": "Team A",
     "type": "MATCH_START",
     "player": "",
-    "description": "比赛开始。",
+    "description": "比赛开始，阿根廷与法国进入战术演练。",
     "data": {}
+  },
+  {
+    "minute": 5,
+    "team": "Team A",
+    "type": "KEY_PASS",
+    "player": "Messi",
+    "description": "阿根廷通过梅西向右肋送出关键直塞，迪马利亚前插接应。",
+    "data": {
+      "zone": "right_half_space",
+      "direction": "right",
+      "phase": "build_up",
+      "result": "success",
+      "receiver": "Di Maria"
+    }
   },
   {
     "minute": 8,
     "team": "Team A",
     "type": "SHOT",
-    "player": "Player 9",
-    "description": "A队完成一次禁区外远射。",
+    "player": "Messi",
+    "description": "阿根廷完成一次禁区外远射。",
     "data": {
       "shot_on_target": false,
-      "zone": "middle"
+      "zone": "middle",
+      "direction": "middle",
+      "phase": "build_up",
+      "result": "off_target"
     }
   },
   {
     "minute": 12,
     "team": "Team B",
     "type": "DANGEROUS_ATTACK",
-    "player": "Player 11",
-    "description": "B队在右路形成一次危险进攻。",
+    "player": "Mbappe",
+    "description": "法国在右路形成一次危险进攻。",
     "data": {
-      "zone": "right"
+      "zone": "right",
+      "direction": "right",
+      "phase": "transition",
+      "result": "threat"
+    }
+  },
+  {
+    "minute": 16,
+    "team": "Team B",
+    "type": "TACKLE",
+    "player": "Tchouameni",
+    "description": "法国在中场完成抢断，并立即把球转向右路。",
+    "data": {
+      "zone": "middle",
+      "direction": "right",
+      "phase": "transition",
+      "result": "success",
+      "transition": true
     }
   },
   {
     "minute": 18,
     "team": "Team B",
     "type": "CORNER",
-    "player": "Player 7",
-    "description": "B队赢得一次角球机会。",
+    "player": "Griezmann",
+    "description": "法国赢得一次角球机会。",
     "data": {
-      "zone": "right"
+      "zone": "right",
+      "direction": "right",
+      "phase": "set_piece",
+      "result": "corner_won"
+    }
+  },
+  {
+    "minute": 21,
+    "team": "Team A",
+    "type": "TURNOVER",
+    "player": "De Paul",
+    "description": "阿根廷在中路推进时丢失球权，法国获得反击起点。",
+    "data": {
+      "zone": "middle",
+      "direction": "middle",
+      "phase": "build_up",
+      "result": "lost",
+      "opponent_transition": true
     }
   },
   {
     "minute": 23,
     "team": "Team B",
     "type": "SHOT",
-    "player": "Player 10",
-    "description": "B队在禁区内完成射门，并命中球门范围。",
+    "player": "Mbappe",
+    "description": "法国在禁区内完成射门，并命中球门范围。",
     "data": {
       "shot_on_target": true,
-      "zone": "right"
+      "zone": "right",
+      "direction": "right",
+      "phase": "transition",
+      "result": "on_target"
     }
   },
   {
@@ -64,73 +118,134 @@
     "minute": 35,
     "team": "Team B",
     "type": "GOAL",
-    "player": "Player 10",
-    "description": "B队经过持续右路压迫后取得进球。",
+    "player": "Mbappe",
+    "description": "法国经过持续右路压迫后取得进球。",
     "data": {
-      "zone": "right"
+      "zone": "right",
+      "direction": "right",
+      "phase": "transition",
+      "result": "goal"
     }
   },
   {
     "minute": 41,
     "team": "Team A",
     "type": "YELLOW_CARD",
-    "player": "Player 4",
-    "description": "A队因一次战术犯规吃到黄牌。",
+    "player": "Romero",
+    "description": "阿根廷因一次中场战术犯规吃到黄牌。",
     "data": {
-      "zone": "middle"
+      "zone": "middle",
+      "direction": "middle",
+      "phase": "defense",
+      "result": "yellow_card"
     }
   },
   {
     "minute": 48,
     "team": "Team A",
     "type": "SUBSTITUTION",
-    "player": "Player 18",
-    "description": "A队进行中场位置换人调整。",
+    "player": "Paredes",
+    "description": "阿根廷进行中场位置换人调整。",
     "data": {
-      "out": "Player 8",
-      "in": "Player 18"
+      "out": "De Paul",
+      "in": "Paredes",
+      "phase": "adjustment",
+      "result": "substitution"
+    }
+  },
+  {
+    "minute": 52,
+    "team": "Team A",
+    "type": "KEY_PASS",
+    "player": "Messi",
+    "description": "阿根廷由梅西在中路送出关键传球，制造禁区前沿机会。",
+    "data": {
+      "zone": "middle",
+      "direction": "middle",
+      "phase": "build_up",
+      "result": "success",
+      "receiver": "Alvarez"
     }
   },
   {
     "minute": 54,
     "team": "Team A",
     "type": "SHOT",
-    "player": "Player 9",
-    "description": "A队在中路配合后创造一次射门机会，并命中球门范围。",
+    "player": "Alvarez",
+    "description": "阿根廷在中路配合后创造一次射门机会，并命中球门范围。",
     "data": {
       "shot_on_target": true,
-      "zone": "middle"
+      "zone": "middle",
+      "direction": "middle",
+      "phase": "build_up",
+      "result": "on_target"
+    }
+  },
+  {
+    "minute": 58,
+    "team": "Team B",
+    "type": "TRANSITION",
+    "player": "Mbappe",
+    "description": "法国由姆巴佩发动快速反击，直接冲击阿根廷防线身后。",
+    "data": {
+      "zone": "left",
+      "direction": "left",
+      "phase": "transition",
+      "result": "threat",
+      "speed_level": "high"
     }
   },
   {
     "minute": 60,
     "team": "Team B",
     "type": "DANGEROUS_ATTACK",
-    "player": "Player 11",
-    "description": "B队再次攻击A队右后卫身后的空间。",
+    "player": "Mbappe",
+    "description": "法国再次攻击阿根廷右后卫身后的空间。",
     "data": {
-      "zone": "right"
+      "zone": "right",
+      "direction": "right",
+      "phase": "transition",
+      "result": "threat"
     }
   },
   {
     "minute": 64,
     "team": "Team B",
     "type": "SHOT",
-    "player": "Player 9",
-    "description": "B队在右肋区域再次完成射门。",
+    "player": "Giroud",
+    "description": "法国在右肋区域再次完成射门。",
     "data": {
       "shot_on_target": false,
-      "zone": "right"
+      "zone": "right_half_space",
+      "direction": "right",
+      "phase": "transition",
+      "result": "off_target"
     }
   },
   {
     "minute": 71,
     "team": "Team A",
     "type": "GOAL",
-    "player": "Player 9",
-    "description": "A队通过中路配合扳平比分。",
+    "player": "Messi",
+    "description": "阿根廷通过中路配合扳平比分。",
     "data": {
-      "zone": "middle"
+      "zone": "middle",
+      "direction": "middle",
+      "phase": "build_up",
+      "result": "goal"
+    }
+  },
+  {
+    "minute": 76,
+    "team": "Team A",
+    "type": "TACKLE",
+    "player": "Romero",
+    "description": "阿根廷后场完成关键抢断，化解法国反击。",
+    "data": {
+      "zone": "middle",
+      "direction": "middle",
+      "phase": "defense",
+      "result": "success"
     }
   },
   {
@@ -138,7 +253,7 @@
     "team": "Team B",
     "type": "POSSESSION_CHANGE",
     "player": "",
-    "description": "比赛尾声阶段，B队保持了更多控球。",
+    "description": "比赛尾声阶段，法国保持了更多控球。",
     "data": {
       "team_a": 43,
       "team_b": 57

@@ -123,7 +123,7 @@
       </div>
 
       <div v-if="selectedMatch.simulated" class="detail-warning">
-        模拟数据，仅用于战术演练，不代表真实比赛事实。
+        本场为世界杯决赛主题模拟演练：事件流、阵容能力标签和战术资料均为项目演示数据，仅用于验证 Agent 流程，不代表真实比赛事实。
       </div>
 
       <div class="match-detail-grid">
@@ -379,6 +379,9 @@
       </section>
 
       <section class="soft-card analysis-panel">
+        <div v-if="selectedMatch?.simulated" class="simulation-data-note">
+          当前 Agent 依据的是模拟事件流 + 手工战术资料 Profile，用于演示工具调用、证据链和防幻觉机制，不等同于真实历史比赛数据。
+        </div>
         <div class="section-head compact-head">
           <div class="section-title">Agent 战术分析</div>
           <span class="focus-counter">
@@ -444,7 +447,7 @@
       <section class="soft-card detail-panel">
         <el-tabs v-model="activeDetailTab" class="detail-tabs">
           <el-tab-pane label="战术图表" name="charts" class="charts-tab">
-            <TacticalCharts :state="state" :events="events" embedded />
+            <TacticalCharts :state="state" :events="events" :home-team-name="homeDisplayTeam" :away-team-name="awayDisplayTeam" embedded />
           </el-tab-pane>
           <el-tab-pane label="Agent 执行链路" name="trace">
             <div v-if="!analysisTask && visibleAgentTraces.length === 0" class="empty">
@@ -530,7 +533,7 @@
                   <div class="event-meta">
                     <span :class="['team-side-badge', teamSideClass(event.team)]">{{ displayTeamName(event.team || '比赛') }}</span>
                     <span>{{ eventTypeName(event.type) }}</span>
-                    <span>{{ zoneText(event.data.zone) }}</span>
+                    <span v-for="chip in eventDetailChips(event)" :key="chip" class="event-data-chip">{{ chip }}</span>
                   </div>
                   <div class="event-desc">{{ event.description }}</div>
                 </div>
@@ -688,6 +691,17 @@ const homeStats = computed(() => state.teams[teamNames.value[0]] ?? emptyStats)
 const awayStats = computed(() => state.teams[teamNames.value[1]] ?? emptyStats)
 const homeDisplayTeam = computed(() => selectedMatch.value?.homeTeam ?? selectedProfile.value?.home.team ?? teamNames.value[0])
 const awayDisplayTeam = computed(() => selectedMatch.value?.awayTeam ?? selectedProfile.value?.away.team ?? teamNames.value[1])
+const selectedMatchTitle = computed(() => {
+  if (!selectedMatch.value) return '比赛模拟演练'
+  const title = `${teamDisplayName(selectedMatch.value.homeTeam)} vs ${teamDisplayName(selectedMatch.value.awayTeam)}`
+  return selectedMatch.value.simulated ? `主题模拟演练：${title}` : title
+})
+
+const selectedMatchMeta = computed(() => {
+  if (!selectedMatch.value) return '当前比赛演练'
+  const base = `${competitionDisplayName(selectedMatch.value.competition)} ${selectedMatch.value.season} | ${selectedMatch.value.matchDate}`
+  return selectedMatch.value.simulated ? `${base} | 非真实事件流` : base
+})
 const orderedEvents = computed(() => [...events.value].reverse())
 const orderedAnalyses = computed(() => [...analyses.value].reverse())
 const visibleAgentTraces = computed(() => [...realtimeAgentTraces.value, ...agentTraces.value].slice(-60).reverse())
@@ -1356,11 +1370,65 @@ function zoneText(zone: unknown) {
     left: '左路',
     right: '右路',
     middle: '中路',
+    left_half_space: '左肋部',
+    right_half_space: '右肋部',
+    box: '禁区',
     unknown: '未知区域'
   }
   return names[String(zone ?? 'unknown')] ?? String(zone)
 }
 
+function eventDetailChips(event: MatchEvent) {
+  const chips: string[] = []
+  const zone = zoneText(event.data.zone)
+  const direction = directionText(event.data.direction)
+  const phase = phaseText(event.data.phase)
+  const result = resultText(event.data.result)
+  if (zone !== '未知区域') chips.push(`区域：${zone}`)
+  if (direction !== '未知方向') chips.push(`方向：${direction}`)
+  if (phase !== '未知阶段') chips.push(`阶段：${phase}`)
+  if (result !== '未知结果') chips.push(`结果：${result}`)
+  if (event.data.receiver) chips.push(`接应：${event.data.receiver}`)
+  return chips
+}
+
+function directionText(direction: unknown) {
+  const names: Record<string, string> = {
+    left: '左路',
+    right: '右路',
+    middle: '中路',
+    unknown: '未知方向'
+  }
+  return names[String(direction ?? 'unknown')] ?? String(direction)
+}
+
+function phaseText(phase: unknown) {
+  const names: Record<string, string> = {
+    build_up: '组织推进',
+    transition: '攻防转换',
+    set_piece: '定位球',
+    defense: '防守阶段',
+    adjustment: '人员调整',
+    unknown: '未知阶段'
+  }
+  return names[String(phase ?? 'unknown')] ?? String(phase)
+}
+
+function resultText(result: unknown) {
+  const names: Record<string, string> = {
+    success: '成功',
+    lost: '丢失球权',
+    threat: '形成威胁',
+    goal: '进球',
+    on_target: '射正',
+    off_target: '偏出',
+    corner_won: '赢得角球',
+    yellow_card: '黄牌',
+    substitution: '换人',
+    unknown: '未知结果'
+  }
+  return names[String(result ?? 'unknown')] ?? String(result)
+}
 function userError(error: unknown) {
   console.error(error)
   return '请求失败，请确认后端服务和 Agent 服务是否正常运行。'
@@ -2495,6 +2563,18 @@ function formatTime(value: string) {
   color: #cbd5e1;
 }
 
+.event-data-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  color: #c8d6e8;
+  font-size: 12px;
+}
+
 .analysis-conclusion,
 .event-desc {
   margin-top: 6px;
@@ -2704,3 +2784,5 @@ function formatTime(value: string) {
   }
 }
 </style>
+
+
