@@ -2,6 +2,8 @@ package com.zsj.tactimind.match.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zsj.tactimind.catalog.model.MatchCatalogItem;
+import com.zsj.tactimind.match.datasource.MatchEventDataSourceRegistry;
 import com.zsj.tactimind.match.model.MatchEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,18 +16,29 @@ import java.util.List;
 @Service
 public class MatchEventLoader {
     private final ObjectMapper objectMapper;
+    private final MatchEventDataSourceRegistry dataSourceRegistry;
     private final Path defaultEventsFile;
 
     public MatchEventLoader(
             ObjectMapper objectMapper,
+            MatchEventDataSourceRegistry dataSourceRegistry,
             @Value("${tactimind.match.events-file}") String eventsFile
     ) {
         this.objectMapper = objectMapper;
+        this.dataSourceRegistry = dataSourceRegistry;
         this.defaultEventsFile = Path.of(eventsFile);
     }
 
     public List<MatchEvent> loadEvents() {
         return loadEvents(defaultEventsFile);
+    }
+
+    public List<MatchEvent> loadEvents(MatchCatalogItem match) {
+        return dataSourceRegistry.loadEvents(match);
+    }
+
+    public String dataSourceName(MatchCatalogItem match) {
+        return dataSourceRegistry.resolveDataSourceName(match);
     }
 
     public List<MatchEvent> loadEvents(String eventsFilePath) {

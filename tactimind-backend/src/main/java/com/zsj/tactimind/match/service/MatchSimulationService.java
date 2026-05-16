@@ -423,7 +423,7 @@ public class MatchSimulationService {
     private void loadCurrentMatchEvents() {
         MatchCatalogItem match = currentCatalogItem();
         currentEventFilePath = match.eventFilePath();
-        events = eventLoader.loadEvents(currentEventFilePath);
+        events = eventLoader.loadEvents(match);
         finalMinute = events.stream()
                 .mapToInt(MatchEvent::getMinute)
                 .max()
