@@ -123,7 +123,7 @@
       </div>
 
       <div v-if="selectedMatch.simulated" class="detail-warning">
-        本场为世界杯决赛主题模拟演练：事件流、阵容能力标签和战术资料均为项目演示数据，仅用于验证 Agent 流程，不代表真实比赛事实。
+        本场为{{ competitionDisplayName(selectedMatch.competition) }}主题模拟演练：事件流、阵容能力标签和战术资料均为项目演示数据，仅用于验证 Agent 流程，不代表真实比赛事实。
       </div>
 
       <div class="match-detail-grid">
@@ -138,6 +138,10 @@
         <article>
           <span>是否可分析</span>
           <strong>{{ selectedMatch.playable ? '可以分析' : '仅可查看' }}</strong>
+        </article>
+        <article>
+          <span>事件流状态</span>
+          <strong>{{ selectedMatch.eventFilePath ? '已绑定事件流' : '暂无事件流' }}</strong>
         </article>
       </div>
 
@@ -1104,11 +1108,18 @@ async function startSelectedMatchAnalysis() {
     ElMessage.warning('该比赛当前仅可查看，暂不支持启动 Agent 分析。')
     return
   }
-  if (selectedMatch.value.matchCode !== 'world-cup-2022-argentina-france') {
-    ElMessage.info('当前实时演练引擎先接入 demo 事件流，后续会按比赛编号加载不同事件文件。')
+  if (!selectedMatch.value.eventFilePath) {
+    ElMessage.warning('该比赛暂无可演练事件流文件，请选择模拟演练或深度演练比赛。')
+    return
   }
+  await legacyMatchApi.select(selectedMatch.value.matchCode)
+  events.value = []
+  analyses.value = []
+  dataInsights.value = []
+  realtimeAgentTraces.value = []
+  report.value = null
+  timelineEdited.value = false
   await createAnalysisTask(selectedMatch.value)
-  await runAction('reset')
   await runAction('start')
   previousListView.value = 'catalog'
   currentView.value = 'simulation'

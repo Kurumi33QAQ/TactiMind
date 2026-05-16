@@ -5,6 +5,9 @@
       <div class="tags">
         <span class="tag">{{ dataLevelName(match.dataLevel) }}</span>
         <span class="tag source">{{ sourceTypeName(match.sourceType) }}</span>
+        <span :class="['tag', match.eventFilePath ? 'event-ready' : 'event-missing']">
+          {{ match.eventFilePath ? '可实时演练' : '暂无事件流' }}
+        </span>
       </div>
     </div>
 
@@ -107,6 +110,16 @@ defineEmits<{
 
 .tag.source {
   color: #7dd3fc;
+}
+
+.tag.event-ready {
+  border-color: rgba(74, 222, 128, 0.32);
+  color: #bbf7d0;
+}
+
+.tag.event-missing {
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
 }
 
 .teams {

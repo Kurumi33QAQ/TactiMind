@@ -32,6 +32,10 @@ public class MatchSimulationController {
         this.persistenceService = persistenceService;
     }
 
+    @PostMapping("/simulate/select")
+    public SimulationStatus select(@RequestParam String matchId) {
+        return simulationService.selectMatch(matchId);
+    }
     @PostMapping("/simulate/start")
     public SimulationStatus start() {
         return simulationService.start();

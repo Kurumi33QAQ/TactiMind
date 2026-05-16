@@ -25,7 +25,7 @@ public class MatchCatalogService {
                     LocalDate.of(2022, 12, 18),
                     SourceType.AI_SIMULATED,
                     DataLevel.SIMULATED_EVENT,
-                    "../data/match_events.json",
+                    "../data/events/world-cup-2022-argentina-france-simulated.json",
                     true,
                     "世界杯决赛主题的模拟事件流，用于演示实时事件回放、Agent 分析和防幻觉校验。",
                     List.of("事件流回放", "实时战术分析", "结构化报告", "证据校验", "WebSocket 演练")
@@ -42,7 +42,7 @@ public class MatchCatalogService {
                     LocalDate.of(2025, 3, 30),
                     SourceType.AI_SIMULATED,
                     DataLevel.SIMULATED_EVENT,
-                    "",
+                    "../data/events/premier-league-mancity-arsenal-simulated.json",
                     true,
                     "英超强强对话模拟数据，适合演示边路进攻、控球压制和攻防转换分析。",
                     List.of("模拟事件流", "关键指标统计", "战术趋势判断", "Agent Trace")

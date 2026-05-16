@@ -1,0 +1,139 @@
+﻿[
+  {
+    "minute": 1,
+    "team": "Team A",
+    "type": "MATCH_START",
+    "player": "",
+    "description": "比赛开始，曼城与阿森纳进入英超主题战术演练。",
+    "data": {}
+  },
+  {
+    "minute": 6,
+    "team": "Team A",
+    "type": "KEY_PASS",
+    "player": "De Bruyne",
+    "description": "曼城由德布劳内在右肋送出关键传球，哈兰德前插接应。",
+    "data": {
+      "zone": "right_half_space",
+      "direction": "right",
+      "phase": "build_up",
+      "result": "success",
+      "receiver": "Haaland"
+    }
+  },
+  {
+    "minute": 11,
+    "team": "Team A",
+    "type": "SHOT",
+    "player": "Haaland",
+    "description": "曼城中锋在禁区内完成射门，被门将封堵。",
+    "data": {
+      "shot_on_target": true,
+      "zone": "box",
+      "direction": "middle",
+      "phase": "build_up",
+      "result": "on_target"
+    }
+  },
+  {
+    "minute": 18,
+    "team": "Team B",
+    "type": "TACKLE",
+    "player": "Rice",
+    "description": "阿森纳在中场完成抢断，快速把球转移到左路。",
+    "data": {
+      "zone": "middle",
+      "direction": "left",
+      "phase": "transition",
+      "result": "success",
+      "transition": true
+    }
+  },
+  {
+    "minute": 23,
+    "team": "Team B",
+    "type": "TRANSITION",
+    "player": "Saka",
+    "description": "阿森纳通过萨卡发动快速反击，冲击曼城右侧防区。",
+    "data": {
+      "zone": "right",
+      "direction": "right",
+      "phase": "transition",
+      "result": "threat",
+      "speed_level": "high"
+    }
+  },
+  {
+    "minute": 29,
+    "team": "Team A",
+    "type": "POSSESSION_CHANGE",
+    "player": "",
+    "description": "比赛前30分钟，曼城保持更多控球。",
+    "data": {
+      "team_a": 62,
+      "team_b": 38
+    }
+  },
+  {
+    "minute": 36,
+    "team": "Team A",
+    "type": "GOAL",
+    "player": "Haaland",
+    "description": "曼城通过右肋关键传球后的连续压迫取得进球。",
+    "data": {
+      "zone": "right_half_space",
+      "direction": "right",
+      "phase": "build_up",
+      "result": "goal"
+    }
+  },
+  {
+    "minute": 52,
+    "team": "Team B",
+    "type": "TURNOVER",
+    "player": "Odegaard",
+    "description": "阿森纳在中路推进时被迫回传失误，曼城获得二次进攻机会。",
+    "data": {
+      "zone": "middle",
+      "direction": "middle",
+      "phase": "build_up",
+      "result": "lost",
+      "opponent_transition": true
+    }
+  },
+  {
+    "minute": 61,
+    "team": "Team B",
+    "type": "SHOT",
+    "player": "Martinelli",
+    "description": "阿森纳左路反击后完成射门，皮球偏出。",
+    "data": {
+      "shot_on_target": false,
+      "zone": "left",
+      "direction": "left",
+      "phase": "transition",
+      "result": "off_target"
+    }
+  },
+  {
+    "minute": 74,
+    "team": "Team B",
+    "type": "GOAL",
+    "player": "Saka",
+    "description": "阿森纳依靠右路反击扳平比分。",
+    "data": {
+      "zone": "right",
+      "direction": "right",
+      "phase": "transition",
+      "result": "goal"
+    }
+  },
+  {
+    "minute": 90,
+    "team": "Team A",
+    "type": "MATCH_END",
+    "player": "",
+    "description": "全场演练结束。",
+    "data": {}
+  }
+]

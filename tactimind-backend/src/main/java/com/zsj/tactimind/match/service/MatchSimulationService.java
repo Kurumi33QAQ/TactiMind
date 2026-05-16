@@ -5,7 +5,9 @@ import com.zsj.tactimind.agent.model.AgentAnalyzeResponse;
 import com.zsj.tactimind.agent.model.DataInsight;
 import com.zsj.tactimind.agent.model.TacticalAnalysis;
 import com.zsj.tactimind.analysis.model.AgentTraceLog;
+import com.zsj.tactimind.catalog.model.MatchCatalogItem;
 import com.zsj.tactimind.catalog.model.MatchTacticalProfile;
+import com.zsj.tactimind.catalog.service.MatchCatalogService;
 import com.zsj.tactimind.catalog.service.MatchTacticalProfileService;
 import com.zsj.tactimind.match.cache.MatchRealtimeCacheFacade;
 import com.zsj.tactimind.match.model.EventType;
@@ -34,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 public class MatchSimulationService {
     private static final Logger log = LoggerFactory.getLogger(MatchSimulationService.class);
     private static final Set<Double> SUPPORTED_SPEEDS = Set.of(0.5, 1.0, 2.0, 4.0, 8.0);
+    private static final String DEFAULT_MATCH_CODE = "world-cup-2022-argentina-france";
 
     private final MatchEventLoader eventLoader;
     private final MatchStateAggregator aggregator;
@@ -41,6 +44,7 @@ public class MatchSimulationService {
     private final MatchRealtimeCacheFacade cacheService;
     private final MatchPersistenceFacade persistenceService;
     private final MatchWebSocketBroadcaster broadcaster;
+    private final MatchCatalogService matchCatalogService;
     private final MatchTacticalProfileService profileService;
     private final long tickMillis;
     private final int recentWindowSize;
@@ -56,6 +60,8 @@ public class MatchSimulationService {
     private boolean running;
     private int finalMinute;
     private double speed = 1.0;
+    private String currentMatchCode = DEFAULT_MATCH_CODE;
+    private String currentEventFilePath = "";
 
     public MatchSimulationService(
             MatchEventLoader eventLoader,
@@ -64,6 +70,7 @@ public class MatchSimulationService {
             MatchRealtimeCacheFacade cacheService,
             MatchPersistenceFacade persistenceService,
             MatchWebSocketBroadcaster broadcaster,
+            MatchCatalogService matchCatalogService,
             MatchTacticalProfileService profileService,
             @Value("${tactimind.match.tick-millis}") long tickMillis,
             @Value("${tactimind.match.recent-window-size}") int recentWindowSize
@@ -74,6 +81,7 @@ public class MatchSimulationService {
         this.cacheService = cacheService;
         this.persistenceService = persistenceService;
         this.broadcaster = broadcaster;
+        this.matchCatalogService = matchCatalogService;
         this.profileService = profileService;
         this.tickMillis = tickMillis;
         this.recentWindowSize = recentWindowSize;
@@ -81,12 +89,8 @@ public class MatchSimulationService {
 
     @PostConstruct
     public synchronized void init() {
-        events = eventLoader.loadEvents();
-        finalMinute = events.stream()
-                .mapToInt(MatchEvent::getMinute)
-                .max()
-                .orElse(90);
-        state = aggregator.newState();
+        loadCurrentMatchEvents();
+        state = newStateForCurrentMatch();
         cacheSnapshot();
         persistMatchInfo();
     }
@@ -121,6 +125,27 @@ public class MatchSimulationService {
     public synchronized SimulationStatus reset() {
         running = false;
         cancelTask();
+        resetInternal();
+        clearPersistedTimeline();
+        cacheSnapshot();
+        persistMatchInfo();
+        broadcaster.broadcast("MATCH_STATE", state);
+        broadcaster.broadcast("SIMULATION_STATUS", status());
+        return status();
+    }
+
+    public synchronized SimulationStatus selectMatch(String matchId) {
+        MatchCatalogItem match = matchCatalogService.findByIdOrCode(matchId)
+                .orElseThrow(() -> new IllegalArgumentException("未找到可演练比赛：" + matchId));
+        if (match.eventFilePath() == null || match.eventFilePath().isBlank()) {
+            throw new IllegalArgumentException("该比赛暂无可演练事件流文件，请选择深度演练或模拟演练比赛");
+        }
+
+        running = false;
+        cancelTask();
+        currentMatchCode = match.matchCode();
+        currentEventFilePath = match.eventFilePath();
+        loadCurrentMatchEvents();
         resetInternal();
         clearPersistedTimeline();
         cacheSnapshot();
@@ -321,7 +346,7 @@ public class MatchSimulationService {
     private MatchTacticalProfile currentTacticalProfile() {
         // 当前实时演练引擎还固定使用世界杯决赛 demo 事件流。
         // 后续按比赛编号加载事件文件时，这里会改成 state.matchId -> matchCode 的映射。
-        return profileService.findByMatchCode("world-cup-2022-argentina-france").orElse(null);
+        return profileService.findByMatchCode(currentMatchCode).orElse(null);
     }
 
     private void broadcastDataInsights(List<DataInsight> dataInsights) {
@@ -390,9 +415,30 @@ public class MatchSimulationService {
         recentEvents = new ArrayList<>();
         publishedEvents = new ArrayList<>();
         analysisHistory = new ArrayList<>();
-        state = aggregator.newState();
+        state = newStateForCurrentMatch();
         state.setRunning(false);
         state.setFinished(false);
+    }
+
+    private void loadCurrentMatchEvents() {
+        MatchCatalogItem match = currentCatalogItem();
+        currentEventFilePath = match.eventFilePath();
+        events = eventLoader.loadEvents(currentEventFilePath);
+        finalMinute = events.stream()
+                .mapToInt(MatchEvent::getMinute)
+                .max()
+                .orElse(90);
+    }
+
+    private MatchState newStateForCurrentMatch() {
+        MatchState newState = aggregator.newState();
+        newState.setMatchId(currentMatchCode);
+        return newState;
+    }
+
+    private MatchCatalogItem currentCatalogItem() {
+        return matchCatalogService.findByIdOrCode(currentMatchCode)
+                .orElseThrow(() -> new IllegalStateException("当前比赛不在比赛目录中：" + currentMatchCode));
     }
 
     private void cacheSnapshot() {

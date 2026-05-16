@@ -14,17 +14,28 @@ import java.util.List;
 @Service
 public class MatchEventLoader {
     private final ObjectMapper objectMapper;
-    private final Path eventsFile;
+    private final Path defaultEventsFile;
 
     public MatchEventLoader(
             ObjectMapper objectMapper,
             @Value("${tactimind.match.events-file}") String eventsFile
     ) {
         this.objectMapper = objectMapper;
-        this.eventsFile = Path.of(eventsFile);
+        this.defaultEventsFile = Path.of(eventsFile);
     }
 
     public List<MatchEvent> loadEvents() {
+        return loadEvents(defaultEventsFile);
+    }
+
+    public List<MatchEvent> loadEvents(String eventsFilePath) {
+        if (eventsFilePath == null || eventsFilePath.isBlank()) {
+            return loadEvents(defaultEventsFile);
+        }
+        return loadEvents(Path.of(eventsFilePath));
+    }
+
+    private List<MatchEvent> loadEvents(Path eventsFile) {
         try {
             List<MatchEvent> events = objectMapper.readValue(
                     eventsFile.toFile(),
@@ -35,7 +46,7 @@ public class MatchEventLoader {
                     .sorted(Comparator.comparingInt(MatchEvent::getMinute))
                     .toList();
         } catch (IOException e) {
-            throw new IllegalStateException("Failed to load match events from " + eventsFile.toAbsolutePath(), e);
+            throw new IllegalStateException("加载比赛事件流失败，文件路径=" + eventsFile.toAbsolutePath(), e);
         }
     }
 }

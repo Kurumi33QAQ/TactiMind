@@ -16,6 +16,8 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const legacyMatchApi = {
+  select: (matchId: string) =>
+    requestJson<SimulationStatus>('/match/simulate/select?matchId=' + encodeURIComponent(matchId), { method: 'POST' }),
   start: () => requestJson<SimulationStatus>('/match/simulate/start', { method: 'POST' }),
   pause: () => requestJson<SimulationStatus>('/match/simulate/pause', { method: 'POST' }),
   reset: () => requestJson<SimulationStatus>('/match/simulate/reset', { method: 'POST' }),
