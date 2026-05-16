@@ -1,4 +1,4 @@
-import type { MatchCatalogItem, MatchSearchParams } from './types'
+import type { MatchCatalogItem, MatchSearchParams, MatchTacticalProfile } from './types'
 
 function toQuery(params: MatchSearchParams): string {
   const query = new URLSearchParams()
@@ -21,5 +21,6 @@ async function requestJson<T>(url: string): Promise<T> {
 
 export const matchCatalogApi = {
   search: (params: MatchSearchParams) => requestJson<MatchCatalogItem[]>(`/api/matches/search${toQuery(params)}`),
-  detail: (matchId: string | number) => requestJson<MatchCatalogItem>(`/api/matches/${matchId}`)
+  detail: (matchId: string | number) => requestJson<MatchCatalogItem>(`/api/matches/${matchId}`),
+  profile: (matchId: string | number) => requestJson<MatchTacticalProfile>(`/api/matches/${matchId}/profile`)
 }

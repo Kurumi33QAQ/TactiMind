@@ -148,6 +148,100 @@
         </div>
       </div>
 
+      <div class="profile-panel">
+        <div class="section-head compact-head">
+          <div>
+            <div class="section-title">比赛战术资料</div>
+            <div class="section-desc">阵型、球员状态和能力标签会作为后续 Agent 分析的辅助依据。</div>
+          </div>
+          <el-button size="small" @click="loadSelectedProfile">刷新资料</el-button>
+        </div>
+
+        <div v-if="!selectedProfile" class="empty">该比赛暂无战术资料，后续可接入阵容和球员数据。</div>
+        <div v-else class="profile-grid">
+          <article class="team-profile-card">
+            <div class="profile-card-title">
+              <span class="team-logo">{{ teamLogoText(selectedProfile.home.team) }}</span>
+              <div>
+                <strong>{{ teamDisplayName(selectedProfile.home.team) }}</strong>
+                <span>{{ selectedProfile.home.formation }}｜{{ selectedProfile.home.style }}</span>
+              </div>
+            </div>
+            <div class="profile-meta">主教练：{{ selectedProfile.home.coach }}</div>
+            <div class="profile-meta">压迫方式：{{ selectedProfile.home.pressingStyle }}</div>
+            <div class="profile-meta">推进重点：{{ selectedProfile.home.buildUpFocus }}</div>
+
+            <div class="formation-pitch">
+              <div
+                v-for="(player, index) in selectedProfile.home.startingLineup"
+                :key="player.name"
+                class="pitch-player"
+                :style="lineupPositionStyle(player, index, selectedProfile.home.startingLineup.length)"
+              >
+                <strong>{{ player.number }}</strong>
+                <span>{{ player.name }}</span>
+                <em>{{ player.position }}</em>
+              </div>
+            </div>
+
+            <div class="substitute-panel">
+              <strong>替补席</strong>
+              <div class="substitute-list">
+                <div v-for="player in selectedProfile.home.substitutes" :key="player.name" class="substitute-chip">
+                  {{ player.number }}号 {{ player.name }}｜{{ player.position }}
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="team-profile-card away-profile">
+            <div class="profile-card-title">
+              <span class="team-logo">{{ teamLogoText(selectedProfile.away.team) }}</span>
+              <div>
+                <strong>{{ teamDisplayName(selectedProfile.away.team) }}</strong>
+                <span>{{ selectedProfile.away.formation }}｜{{ selectedProfile.away.style }}</span>
+              </div>
+            </div>
+            <div class="profile-meta">主教练：{{ selectedProfile.away.coach }}</div>
+            <div class="profile-meta">压迫方式：{{ selectedProfile.away.pressingStyle }}</div>
+            <div class="profile-meta">推进重点：{{ selectedProfile.away.buildUpFocus }}</div>
+
+            <div class="formation-pitch">
+              <div
+                v-for="(player, index) in selectedProfile.away.startingLineup"
+                :key="player.name"
+                class="pitch-player"
+                :style="lineupPositionStyle(player, index, selectedProfile.away.startingLineup.length)"
+              >
+                <strong>{{ player.number }}</strong>
+                <span>{{ player.name }}</span>
+                <em>{{ player.position }}</em>
+              </div>
+            </div>
+
+            <div class="substitute-panel">
+              <strong>替补席</strong>
+              <div class="substitute-list">
+                <div v-for="player in selectedProfile.away.substitutes" :key="player.name" class="substitute-chip">
+                  {{ player.number }}号 {{ player.name }}｜{{ player.position }}
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="profile-notes">
+            <strong>关键影响因素</strong>
+            <ul>
+              <li v-for="factor in selectedProfile.keyFactors" :key="factor">{{ factor }}</li>
+            </ul>
+            <strong>数据说明</strong>
+            <ul>
+              <li v-for="note in selectedProfile.dataNotes" :key="note">{{ note }}</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+
       <div class="detail-actions">
         <el-button @click="showCatalogView">返回选择</el-button>
         <el-button type="success" :disabled="!selectedMatch.playable" @click="startSelectedMatchAnalysis">
@@ -473,6 +567,8 @@ import type {
   MatchReport,
   MatchSearchParams,
   MatchState,
+  MatchTacticalProfile,
+  PlayerProfile,
   PersistenceStatus,
   TacticalAnalysis,
   TacticalReport,
@@ -537,6 +633,7 @@ const historyTasks = ref<AnalysisTaskHistoryItem[]>([])
 const catalogOptions = ref<MatchCatalogItem[]>([])
 const matches = ref<MatchCatalogItem[]>([])
 const selectedMatch = ref<MatchCatalogItem | null>(null)
+const selectedProfile = ref<MatchTacticalProfile | null>(null)
 const matchLoading = ref(false)
 const currentView = ref<'catalog' | 'match-detail' | 'simulation' | 'history'>('catalog')
 const previousListView = ref<'catalog' | 'history'>('catalog')
@@ -877,6 +974,7 @@ async function resetSearchForm() {
   searchForm.date = ''
   searchForm.dataLevel = ''
   selectedMatch.value = null
+  selectedProfile.value = null
   await searchMatches()
 }
 
@@ -907,9 +1005,10 @@ function filterSuggestions(values: string[], query: string): Suggestion[] {
 
 function selectMatch(match: MatchCatalogItem) {
   selectedMatch.value = match
+  selectedProfile.value = null
 }
 
-function enterSelectedMatchDetail() {
+async function enterSelectedMatchDetail() {
   if (!selectedMatch.value) {
     ElMessage.warning('请先选择一场可演练比赛。')
     return
@@ -918,7 +1017,53 @@ function enterSelectedMatchDetail() {
     ElMessage.warning('该比赛当前仅可查看，暂不支持启动 Agent 分析。')
     return
   }
+  await loadSelectedProfile()
   currentView.value = 'match-detail'
+}
+
+async function loadSelectedProfile() {
+  if (!selectedMatch.value) return
+  try {
+    selectedProfile.value = await matchCatalogApi.profile(selectedMatch.value.matchCode)
+  } catch (error) {
+    selectedProfile.value = null
+    console.info('当前比赛暂无战术资料', error)
+  }
+}
+
+function lineupPositionStyle(player: PlayerProfile, index: number, total: number) {
+  const fallback = fallbackLineupPosition(index, total)
+  const x = Number.isFinite(player.pitchX) && player.pitchX > 0 ? player.pitchX : fallback.x
+  const y = Number.isFinite(player.pitchY) && player.pitchY > 0 ? player.pitchY : fallback.y
+
+  return {
+    left: `${x}%`,
+    top: `${y}%`
+  }
+}
+
+function fallbackLineupPosition(index: number, total: number) {
+  if (total >= 11) {
+    const fallback433 = [
+      { x: 50, y: 92 },
+      { x: 82, y: 72 },
+      { x: 62, y: 76 },
+      { x: 38, y: 76 },
+      { x: 18, y: 72 },
+      { x: 70, y: 52 },
+      { x: 50, y: 56 },
+      { x: 30, y: 52 },
+      { x: 72, y: 30 },
+      { x: 50, y: 24 },
+      { x: 28, y: 30 }
+    ]
+    return fallback433[index] ?? { x: 50, y: 50 }
+  }
+
+  const rowY = [82, 62, 42, 24]
+  const y = rowY[Math.min(index, rowY.length - 1)]
+  const x = total === 1 ? 50 : 20 + (index * 60) / Math.max(1, total - 1)
+  return { x, y }
 }
 
 async function startSelectedMatchAnalysis() {
@@ -978,6 +1123,7 @@ async function openHistoryTask(task: AnalysisTaskHistoryItem) {
     agentReport.value = await analysisTaskApi.getReport(task.reportId)
     const detail = await matchCatalogApi.detail(task.matchId)
     selectedMatch.value = detail
+    await loadSelectedProfile()
     previousListView.value = 'history'
     currentView.value = 'simulation'
   } catch (error) {
@@ -1359,6 +1505,221 @@ function formatTime(value: string) {
   background: rgba(30, 64, 175, 0.18);
   color: #bfdbfe;
   padding: 6px 10px;
+}
+
+.profile-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.team-profile-card,
+.profile-notes {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(15, 28, 49, 0.72);
+  padding: 14px;
+}
+
+.team-profile-card {
+  box-shadow: inset 4px 0 0 rgba(242, 198, 109, 0.78);
+}
+
+.team-profile-card.away-profile {
+  box-shadow: inset 4px 0 0 rgba(96, 165, 250, 0.78);
+}
+
+.profile-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.profile-card-title strong,
+.profile-card-title span {
+  display: block;
+}
+
+.profile-card-title strong {
+  color: #eef3fb;
+  font-size: 18px;
+}
+
+.profile-card-title div > span,
+.profile-meta {
+  color: #9fb0c7;
+  line-height: 1.6;
+}
+
+.formation-pitch {
+  position: relative;
+  height: 430px;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(125, 184, 255, 0.24);
+  border-radius: 18px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px) 50% 0 / 1px 100% no-repeat,
+    radial-gradient(circle at 50% 50%, transparent 0 58px, rgba(255, 255, 255, 0.16) 59px 61px, transparent 62px),
+    linear-gradient(180deg, rgba(34, 91, 65, 0.74), rgba(18, 69, 52, 0.82));
+}
+
+.formation-pitch::before,
+.formation-pitch::after {
+  content: '';
+  position: absolute;
+  left: 26%;
+  width: 48%;
+  height: 68px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+}
+
+.formation-pitch::before {
+  top: 0;
+  border-top: 0;
+}
+
+.formation-pitch::after {
+  bottom: 0;
+  border-bottom: 0;
+}
+
+.pitch-player {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  min-width: 78px;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.pitch-player strong {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #f2c66d;
+  color: #101827;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.away-profile .pitch-player strong {
+  background: #7db8ff;
+}
+
+.pitch-player span {
+  margin-top: 4px;
+  max-width: 90px;
+  color: #eef3fb;
+  font-size: 12px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pitch-player em {
+  color: #c8d6e8;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.substitute-panel {
+  margin-top: 12px;
+}
+
+.substitute-panel > strong {
+  display: block;
+  color: #eef3fb;
+  margin-bottom: 8px;
+}
+
+.substitute-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.substitute-chip {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 999px;
+  background: rgba(11, 18, 31, 0.58);
+  color: #dbeafe;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.player-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.player-row {
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 10px;
+  background: rgba(11, 18, 31, 0.55);
+  padding: 10px;
+}
+
+.player-row span,
+.player-row strong,
+.player-row em {
+  display: block;
+}
+
+.player-row strong {
+  margin-top: 4px;
+  color: #dbeafe;
+}
+
+.player-row em {
+  margin-top: 2px;
+  color: #f2c66d;
+  font-style: normal;
+  font-size: 13px;
+}
+
+.ability-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ability-tags span {
+  border-radius: 999px;
+  background: rgba(242, 198, 109, 0.13);
+  color: #fde7ae;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-notes {
+  grid-column: 1 / -1;
+  color: #c8d6e8;
+}
+
+.profile-notes strong {
+  display: block;
+  margin-top: 4px;
+  color: #eef3fb;
+}
+
+.profile-notes ul {
+  margin: 8px 0 12px;
+  padding-left: 18px;
+  line-height: 1.7;
 }
 
 .detail-actions {

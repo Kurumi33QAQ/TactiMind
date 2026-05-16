@@ -92,6 +92,36 @@ export interface MatchCatalogItem {
   simulated: boolean
 }
 
+export interface PlayerProfile {
+  number: number
+  name: string
+  position: string
+  role: string
+  status: string
+  pitchX: number
+  pitchY: number
+  abilityTags: string[]
+}
+
+export interface TeamTacticalProfile {
+  team: string
+  coach: string
+  formation: string
+  style: string
+  pressingStyle: string
+  buildUpFocus: string
+  startingLineup: PlayerProfile[]
+  substitutes: PlayerProfile[]
+}
+
+export interface MatchTacticalProfile {
+  matchCode: string
+  home: TeamTacticalProfile
+  away: TeamTacticalProfile
+  keyFactors: string[]
+  dataNotes: string[]
+}
+
 export interface MatchSearchParams {
   date?: string
   team?: string
