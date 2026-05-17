@@ -1,4 +1,4 @@
-﻿export function eventTypeName(type: string): string {
+export function eventTypeName(type: string): string {
   const names: Record<string, string> = {
     MATCH_START: '比赛开始',
     GOAL: '进球',
@@ -55,6 +55,8 @@ export function teamDisplayName(team: string): string {
     'Team B': 'B队',
     Argentina: '阿根廷',
     France: '法国',
+    Croatia: '克罗地亚',
+    Netherlands: '荷兰',
     'Manchester City': '曼城',
     Arsenal: '阿森纳',
     Spain: '西班牙',

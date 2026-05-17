@@ -1,4 +1,4 @@
-﻿from collections import Counter, defaultdict
+from collections import Counter, defaultdict
 from typing import List
 
 from schemas.analysis_schema import AnalyzeRequest, DataInsight, MatchEvent, TeamTacticalProfile
@@ -221,10 +221,10 @@ class DataAgent:
 
     def _format_event_context(self, event: MatchEvent, prefix: str) -> str:
         """把扩展事件字段组织成中文证据，避免 Agent 只输出空泛判断。"""
-        zone = self._zone_name(str(event.data.get("zone", "unknown")))
-        direction = self._direction_name(str(event.data.get("direction", "unknown")))
-        phase = self._phase_name(str(event.data.get("phase", "unknown")))
-        result = self._result_name(str(event.data.get("result", "unknown")))
+        zone = str(event.data.get("zoneDisplay") or self._zone_name(str(event.data.get("zone", "unknown"))))
+        direction = str(event.data.get("directionDisplay") or self._direction_name(str(event.data.get("direction", "unknown"))))
+        phase = str(event.data.get("phaseDisplay") or self._phase_name(str(event.data.get("phase", "unknown"))))
+        result = str(event.data.get("resultDisplay") or self._result_name(str(event.data.get("result", "unknown"))))
         return f"第{event.minute}分钟，{prefix}：区域={zone}，方向={direction}，阶段={phase}，结果={result}"
 
     def _zone_name(self, zone: str) -> str:
@@ -274,6 +274,14 @@ class DataAgent:
             "corner_won": "赢得角球",
             "yellow_card": "黄牌",
             "substitution": "换人",
+            "Saved": "被扑救",
+            "Saved to Post": "扑救后击中门框",
+            "Off T": "偏出球门",
+            "Blocked": "被封堵",
+            "Wayward": "严重偏出",
+            "Post": "击中门框",
+            "created_chance": "制造机会",
+            "lost_possession": "丢失球权",
             "unknown": "未知结果",
         }
         return names.get(result, result)
@@ -305,5 +313,7 @@ class DataAgent:
             "Team B": "B队",
             "Argentina": "阿根廷",
             "France": "法国",
+            "Croatia": "克罗地亚",
+            "Netherlands": "荷兰",
         }
         return names.get(team, team)

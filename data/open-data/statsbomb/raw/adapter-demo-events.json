@@ -1,0 +1,37 @@
+[
+  {
+    "minute": 8,
+    "team": { "name": "示例主队" },
+    "player": { "name": "示例前锋" },
+    "type": { "name": "Shot" },
+    "play_pattern": { "name": "Regular Play" },
+    "location": [104.0, 40.0],
+    "shot": { "outcome": { "name": "Saved" } }
+  },
+  {
+    "minute": 12,
+    "team": { "name": "示例客队" },
+    "player": { "name": "示例边锋" },
+    "type": { "name": "Pass" },
+    "play_pattern": { "name": "From Counter" },
+    "location": [88.0, 62.0],
+    "pass": { "shot_assist": true }
+  },
+  {
+    "minute": 23,
+    "team": { "name": "示例主队" },
+    "player": { "name": "示例中场" },
+    "type": { "name": "Dispossessed" },
+    "play_pattern": { "name": "Regular Play" },
+    "location": [66.0, 35.0]
+  },
+  {
+    "minute": 35,
+    "team": { "name": "示例客队" },
+    "player": { "name": "示例前锋" },
+    "type": { "name": "Shot" },
+    "play_pattern": { "name": "From Counter" },
+    "location": [110.0, 38.0],
+    "shot": { "outcome": { "name": "Goal" } }
+  }
+]

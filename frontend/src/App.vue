@@ -12,6 +12,7 @@
         <div class="topbar-match-meta">
           {{ selectedMatch ? `${competitionDisplayName(selectedMatch.competition)} ${selectedMatch.season} | ${selectedMatch.matchDate}` : '当前比赛演练' }}
           <span v-if="selectedMatch?.simulated">模拟数据，仅用于战术演练</span>
+          <span v-else-if="isOpenDataMatch(selectedMatch)">真实公开事件数据</span>
         </div>
       </div>
       <div class="topbar-right">
@@ -78,7 +79,9 @@
           {{ teamDisplayName(selectedMatch.homeTeam) }} vs {{ teamDisplayName(selectedMatch.awayTeam) }}
           <span>｜{{ competitionDisplayName(selectedMatch.competition) }} {{ selectedMatch.season }}</span>
         </div>
-        <div v-if="selectedMatch.simulated" class="inline-warning">模拟数据，仅用于战术演练</div>
+        <div :class="['inline-data-badge', selectedMatch.simulated ? 'simulated' : isOpenDataMatch(selectedMatch) ? 'open-data' : 'manual']">
+          {{ selectedMatchDataNotice }}
+        </div>
         <el-button type="success" :disabled="!selectedMatch.playable" @click="enterSelectedMatchDetail">
           进入分析页
         </el-button>
@@ -122,8 +125,8 @@
         </div>
       </div>
 
-      <div v-if="selectedMatch.simulated" class="detail-warning">
-        本场为{{ competitionDisplayName(selectedMatch.competition) }}主题模拟演练：事件流、阵容能力标签和战术资料均为项目演示数据，仅用于验证 Agent 流程，不代表真实比赛事实。
+      <div :class="['detail-data-notice', selectedMatch.simulated ? 'simulated' : isOpenDataMatch(selectedMatch) ? 'open-data' : 'manual']">
+        {{ selectedMatchDataNotice }}
       </div>
 
       <div class="match-detail-grid">
@@ -134,6 +137,7 @@
         <article>
           <span>数据来源</span>
           <strong>{{ sourceTypeName(selectedMatch.sourceType) }}</strong>
+          <em>{{ selectedMatchSourceHint }}</em>
         </article>
         <article>
           <span>是否可分析</span>
@@ -704,7 +708,27 @@ const selectedMatchTitle = computed(() => {
 const selectedMatchMeta = computed(() => {
   if (!selectedMatch.value) return '当前比赛演练'
   const base = `${competitionDisplayName(selectedMatch.value.competition)} ${selectedMatch.value.season} | ${selectedMatch.value.matchDate}`
-  return selectedMatch.value.simulated ? `${base} | 非真实事件流` : base
+  if (selectedMatch.value.simulated) return `${base} | AI 模拟事件流`
+  if (isOpenDataMatch(selectedMatch.value)) return `${base} | StatsBomb 真实公开事件`
+  return base
+})
+
+const selectedMatchDataNotice = computed(() => {
+  if (!selectedMatch.value) return '请先选择一场可演练比赛。'
+  if (selectedMatch.value.simulated) {
+    return '本场使用 AI 模拟事件流，仅用于战术演练和 Agent 流程演示，不代表真实比赛事实。'
+  }
+  if (isOpenDataMatch(selectedMatch.value)) {
+    return '本场事件流来自 StatsBomb Open Data 真实公开数据；阵容能力标签如无真实来源，仍作为辅助资料展示。'
+  }
+  return '本场仅包含基础资料或手工整理数据，Agent 会在证据不足时降低置信度。'
+})
+
+const selectedMatchSourceHint = computed(() => {
+  if (!selectedMatch.value) return ''
+  if (selectedMatch.value.simulated) return '非真实事件流'
+  if (isOpenDataMatch(selectedMatch.value)) return '真实公开事件流'
+  return '基础资料'
 })
 const orderedEvents = computed(() => [...events.value].reverse())
 const orderedAnalyses = computed(() => [...analyses.value].reverse())
@@ -999,6 +1023,10 @@ async function loadHistoryTasks() {
   } catch (error) {
     ElMessage.error(userError(error))
   }
+}
+
+function isOpenDataMatch(match?: MatchCatalogItem | null): boolean {
+  return match?.sourceType === 'STATSBOMB_OPEN_DATA'
 }
 
 async function resetSearchForm() {
@@ -1557,12 +1585,34 @@ function formatTime(value: string) {
   font-weight: 900;
 }
 
-.detail-warning {
-  border: 1px solid rgba(251, 191, 36, 0.35);
+.detail-data-notice {
   border-radius: 12px;
+  padding: 12px;
+  line-height: 1.6;
+}
+
+.detail-data-notice.simulated,
+.inline-data-badge.simulated,
+.simulation-data-note.simulated {
+  border: 1px solid rgba(251, 191, 36, 0.35);
   background: rgba(120, 53, 15, 0.26);
   color: #fde68a;
-  padding: 12px;
+}
+
+.detail-data-notice.open-data,
+.inline-data-badge.open-data,
+.simulation-data-note.open-data {
+  border: 1px solid rgba(125, 211, 252, 0.34);
+  background: rgba(14, 116, 144, 0.18);
+  color: #bae6fd;
+}
+
+.detail-data-notice.manual,
+.inline-data-badge.manual,
+.simulation-data-note.manual {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.44);
+  color: #cbd5e1;
 }
 
 .match-detail-grid {
@@ -1590,6 +1640,14 @@ function formatTime(value: string) {
 .match-detail-grid strong {
   margin-top: 6px;
   font-size: 18px;
+}
+
+.match-detail-grid em {
+  display: block;
+  margin-top: 5px;
+  color: #7dd3fc;
+  font-style: normal;
+  font-size: 12px;
 }
 
 .capability-panel {
@@ -1875,6 +1933,14 @@ function formatTime(value: string) {
 .inline-warning {
   color: #fde68a;
   font-size: 13px;
+}
+
+.inline-data-badge {
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .match-card-grid {

@@ -1,4 +1,4 @@
-﻿from typing import List
+from typing import List
 
 from schemas.analysis_schema import DataInsight, TacticalCandidate
 
@@ -88,6 +88,8 @@ class TacticsAgent:
             "Team B": "B队",
             "Argentina": "阿根廷",
             "France": "法国",
+            "Croatia": "克罗地亚",
+            "Netherlands": "荷兰",
         }
         return names.get(team, team)
 

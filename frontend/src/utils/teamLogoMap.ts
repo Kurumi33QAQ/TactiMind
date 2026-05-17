@@ -3,6 +3,8 @@ const teamShortNameMap: Record<string, string> = {
   'Team B': 'B',
   Argentina: '阿',
   France: '法',
+  Croatia: '克',
+  Netherlands: '荷',
   'Manchester City': '城',
   Arsenal: '枪',
   Spain: '西',
